@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Fort Native Demo</title>
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Fortoid · KERI</div>
+      <h1>Native phone capabilities</h1>
+      <p>Each button calls the phone through Fortoid's hardened WebView bridge.</p>
+    </header>
+
+    <section class="card">
+      <h2>Device</h2>
+      <p>Basic facts about this phone, read natively.</p>
+      <div class="actions">
+        <button id="device-info" data-call="device.info">Read device info</button>
+      </div>
+      <pre class="out"></pre>
+    </section>
+
+    <p class="status" id="bridge-status"></p>
+  </main>
+  <script src="fort-native.js"></script>
+  <script src="demo.js"></script>
+</body>
+</html>
