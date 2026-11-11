@@ -210,7 +210,8 @@ open class MainActivity : AppCompatActivity() {
                 true
             }
         }
-    ) + HardwareKeystore(applicationContext, biometricGate).capabilities()
+    ) + HardwareKeystore(applicationContext, biometricGate).capabilities() +
+        SecretStore(applicationContext, biometricGate).capabilities()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

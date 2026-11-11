@@ -24,6 +24,9 @@ object NativeBridgeProtocol {
     const val ERROR_BUSY = "busy"
     const val ERROR_FAILED = "failed"
 
+    /** Stored secrets were wiped because the phone's biometric enrollment changed. */
+    const val ERROR_INVALIDATED = "invalidated"
+
     private val CAPABILITY_PATTERN = Regex("^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)+$")
     private const val MAX_CAPABILITY_CHARS = 64
 
