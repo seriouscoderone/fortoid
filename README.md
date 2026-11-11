@@ -6,6 +6,59 @@ KERI Fort mobile application shell for Android.
 
 Fort Android is a hardened WebView shell that hosts the shared [FortWeb](https://github.com/keri-foundation/fortweb) runtime. FortWeb owns the product UI, routing, Python/Pyodide backend, and bridge protocol. Android owns the native wrapper, WebView security policy, and platform lifecycle.
 
+## Native Phone Capabilities Demo
+
+This fork adds a proof-of-concept native bridge so web code in the WebView can
+use the phone's hardware, plus a **Fort Demo** launcher icon that opens a
+bundled demo page (`app/src/main/assets/demo/`) exercising each capability.
+
+### Install on a phone
+
+Every push to `main` builds a debug APK (`.github/workflows/demo-apk.yml`) and
+publishes it as the **demo-latest** pre-release. On the phone, open the
+repository's Releases page, download `fortoid-demo.apk`, and allow installs
+from your browser when Android asks. Newer builds install over older ones
+(debug builds share `app/demo-debug.keystore`; it is not a release key).
+
+The APK has two icons: **KERI Wallet** (FortWeb) and **Fort Demo**.
+
+### Capabilities
+
+| Capability | Params | Result |
+|---|---|---|
+| `device.info` | — | manufacturer, model, Android version |
+| `biometric.authenticate` | `title?`, `subtitle?` | `{authenticated: true}` after a strong-biometric match |
+| `keystore.generate` | `alias`, `requireBiometric?` (default `true`) | SPKI public key, security level (`strongbox`/`tee`/…) |
+| `keystore.publicKey` | `alias` | same as generate |
+| `keystore.sign` | `alias`, `data` (base64, ≤2048 bytes) | ES256 signature as DER and P1363 (r‖s), base64 |
+| `keystore.delete` | `alias` | `{deleted}` |
+| `qr.scan` | `prompt?` | `text`, `format`, `isOobi`, `oobiAid?` |
+
+Keys are EC P-256 in the Android Keystore, StrongBox-backed when the phone has
+it; with `requireBiometric` every signature needs a fresh fingerprint/face match
+and the private key never leaves secure hardware.
+
+### Bridge protocol
+
+From the page (the trusted app origin, main frame only):
+
+```js
+// app/src/main/assets/demo/fort-native.js
+const info = await FortNative.call('device.info');
+```
+
+On the wire, over `window.bridge`:
+
+```json
+{"type":"native_request","id":"n1","capability":"keystore.sign","params":{"alias":"demo","data":"aGk="}}
+{"type":"native_response","id":"n1","ok":true,"result":{"algorithm":"ES256","signature":"…"}}
+{"type":"native_response","id":"n1","ok":false,"error":{"code":"cancelled","message":"…"}}
+```
+
+Error codes: `bad_request`, `unknown_capability`, `unavailable`, `cancelled`,
+`busy`, `failed`. Protocol and dispatch live in
+`app/src/main/java/org/kerifoundation/fort/bridge/`.
+
 ## Prerequisites
 
 - Android Studio (latest stable)
