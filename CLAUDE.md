@@ -14,6 +14,10 @@ Upstream remote: `https://github.com/keri-foundation/fortoid.git`.
   `main`** on this fork as you go. No pull requests, no feature branches.
 - Current focus is a proof-of-concept demo for the KERI Foundation; signed
   release builds are out of scope for now.
+- **KERI-only identity.** Everything the owner builds uses KERI for identity,
+  authentication and signing. Do not propose passkeys/WebAuthn, OAuth or
+  password logins as alternatives. Phone hardware (secure chip, biometrics) is
+  welcome as a way to protect and unlock KERI material, never to replace it.
 
 ## Build
 
