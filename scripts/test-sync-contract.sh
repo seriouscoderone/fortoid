@@ -132,11 +132,17 @@ printf '%s' '{"schema":"fortoid.fortweb-runtime-lock.v1","repository":"keri-foun
 printf '%s' '{"schema":"fortoid.fortweb-runtime-lock.v1","repository":"keri-foundation/fortweb","commit":"002F4BE1BC167BA0DCE635DAB525FEDFACEE8B18"}' > "${FIXTURES}/bad-case.json"
 printf '%s' '{"schema":"fortoid.fortweb-runtime-lock.v1","repository":"keri-foundation/fortweb","commit":"abc123"}' > "${FIXTURES}/bad-short.json"
 printf '%s' 'not json at all' > "${FIXTURES}/bad-json.json"
+printf '%s' '{"schema":"fortoid.fortweb-runtime-lock.v1","repository":"keri-foundation/fortweb","commit":"'"${LOCK_COMMIT}"'"}' > "${FIXTURES}/upstream.json"
+printf '%s' '{"schema":"fortoid.fortweb-runtime-lock.v1","repository":"seriouscoderone/fortweb","commit":"'"${LOCK_COMMIT}"'"}' > "${FIXTURES}/owner-fork.json"
 
 expect_fail_msg "lock with a wrong schema is rejected" "lock schema must be" \
   node "${LOCK_READER}" --lock-file "${FIXTURES}/bad-schema.json"
 expect_fail_msg "lock with a wrong repository is rejected" "lock repository must be" \
   node "${LOCK_READER}" --lock-file "${FIXTURES}/bad-repo.json"
+expect_contains "lock pinning the upstream FortWeb is accepted" "LOCK_REPOSITORY=keri-foundation/fortweb" \
+  "$(node "${LOCK_READER}" --lock-file "${FIXTURES}/upstream.json" 2>&1)"
+expect_contains "lock pinning the owner's FortWeb fork is accepted" "LOCK_REPOSITORY=seriouscoderone/fortweb" \
+  "$(node "${LOCK_READER}" --lock-file "${FIXTURES}/owner-fork.json" 2>&1)"
 expect_fail_msg "lock pinning a branch is rejected" "40-char lowercase SHA" \
   node "${LOCK_READER}" --lock-file "${FIXTURES}/bad-branch.json"
 expect_fail_msg "lock pinning an uppercase commit is rejected" "40-char lowercase SHA" \

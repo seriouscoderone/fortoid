@@ -34,7 +34,8 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const DEFAULT_LOCK_FILE = path.join(REPO_ROOT, 'config/fortweb-runtime.json');
 
 const EXPECTED_SCHEMA = 'fortoid.fortweb-runtime-lock.v1';
-const EXPECTED_REPOSITORY = 'keri-foundation/fortweb';
+// Allowlist, not a pattern: the Foundation's FortWeb and the owner's fork.
+const ALLOWED_REPOSITORIES = ['keri-foundation/fortweb', 'seriouscoderone/fortweb'];
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 
 function fail(message) {
@@ -73,8 +74,8 @@ const commit = typeof lock.commit === 'string' ? lock.commit : '';
 if (schema !== EXPECTED_SCHEMA) {
   fail(`lock schema must be ${EXPECTED_SCHEMA}, got '${schema}'`);
 }
-if (repository !== EXPECTED_REPOSITORY) {
-  fail(`lock repository must be ${EXPECTED_REPOSITORY}, got '${repository}'`);
+if (!ALLOWED_REPOSITORIES.includes(repository)) {
+  fail(`lock repository must be one of ${ALLOWED_REPOSITORIES.join(', ')}, got '${repository}'`);
 }
 if (!COMMIT_PATTERN.test(commit)) {
   fail(`lock commit must be a full 40-char lowercase SHA, got '${commit}'`);

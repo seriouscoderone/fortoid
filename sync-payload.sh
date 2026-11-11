@@ -22,7 +22,6 @@ LOCK_READER="${REPO_ROOT}/tools/read-fortweb-runtime-lock.mjs"
 IMPORTER="${REPO_ROOT}/tools/import-fortweb-runtime-package.mjs"
 BUILDER="${REPO_ROOT}/scripts/build-canonical-fortweb-package.sh"
 PAYLOAD_REL="app/src/main/assets/payload"
-FORTWEB_REMOTE="https://github.com/keri-foundation/fortweb.git"
 
 MODE=""
 PACKAGE_ZIP=""
@@ -31,6 +30,7 @@ DO_LOCKED=false
 PRINT_PLAN=false
 TEMP_ROOT=""
 LOCK_COMMIT=""
+LOCK_REPOSITORY=""
 
 cleanup() {
   if [[ -n "${TEMP_ROOT}" && -d "${TEMP_ROOT}" ]]; then
@@ -151,8 +151,11 @@ LOCK_OUTPUT="$(node "${LOCK_READER}" --lock-file "${LOCK_FILE}")" || exit 1
 while IFS= read -r line; do
   case "${line}" in
     LOCK_COMMIT=*) LOCK_COMMIT="${line#LOCK_COMMIT=}" ;;
+    LOCK_REPOSITORY=*) LOCK_REPOSITORY="${line#LOCK_REPOSITORY=}" ;;
   esac
 done <<< "${LOCK_OUTPUT}"
+# The producer repository comes from the lock (allowlisted by the lock reader).
+FORTWEB_REMOTE="https://github.com/${LOCK_REPOSITORY}.git"
 [[ -n "${LOCK_COMMIT}" ]] || { echo "error: lock reader did not return a commit" 1>&2; exit 1; }
 
 # ── Shared steps ──────────────────────────────────────────────────────────────
