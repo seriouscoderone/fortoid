@@ -55,6 +55,10 @@
       });
   };
 
+  window.DemoParams['qr-scan'] = function () {
+    return { prompt: 'Scan a QR code (try a KERI OOBI)' };
+  };
+
   document.querySelectorAll('button[data-call]').forEach(function (button) {
     button.addEventListener('click', function () {
       var capability = button.getAttribute('data-call');
