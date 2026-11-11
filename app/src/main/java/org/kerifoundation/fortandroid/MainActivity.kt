@@ -191,7 +191,7 @@ class MainActivity : AppCompatActivity() {
     private fun buildNativeCapabilities() = mapOf(
         "device.info" to DeviceInfoCapability(),
         "biometric.authenticate" to BiometricCapability(biometricGate)
-    )
+    ) + HardwareKeystore(applicationContext, biometricGate).capabilities()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
