@@ -20,7 +20,7 @@ repository's Releases page, download `fortoid-demo.apk`, and allow installs
 from your browser when Android asks. Newer builds install over older ones
 (debug builds share `app/demo-debug.keystore`; it is not a release key).
 
-The APK has two icons: **KERI Wallet** (FortWeb) and **Fort Demo**.
+The APK has two icons: **KERI Wallet** (FortWeb) and **Fort Demo** (`DemoActivity`, its own task).
 
 ### Capabilities
 

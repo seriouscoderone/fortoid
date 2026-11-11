@@ -33,19 +33,21 @@
             android:screenOrientation="portrait"
             tools:replace="screenOrientation" />
 
-        <!-- Second launcher icon: opens the native-capabilities demo page in the
-             same hardened WebView host (see LaunchTarget). -->
-        <activity-alias
-            android:name=".DemoLauncher"
+        <!-- Second launcher icon: the native-capabilities demo page in the same
+             hardened WebView host. Its own task affinity keeps it from being
+             merged with (and hidden behind) an already-open wallet task. -->
+        <activity
+            android:name=".DemoActivity"
             android:exported="true"
             android:label="@string/demo_launcher_label"
-            android:targetActivity=".MainActivity">
+            android:taskAffinity="org.kerifoundation.fortandroid.demo"
+            android:windowSoftInputMode="stateHidden|adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
     </application>
 
 </manifest>

@@ -179,7 +179,7 @@ internal object WebRequestPolicy {
     }
 }
 
-class MainActivity : AppCompatActivity() {
+open class MainActivity : AppCompatActivity() {
     private lateinit var rootLayout: FrameLayout
     private lateinit var errorView: TextView
     private lateinit var assetLoader: WebViewAssetLoader
@@ -263,7 +263,7 @@ class MainActivity : AppCompatActivity() {
                 showError(R.string.payload_load_failed)
                 return
             }
-            freshWebView.loadUrl(LaunchTarget.startUrl(intent?.component?.className))
+            freshWebView.loadUrl(LaunchTarget.startUrl(javaClass.name))
         }
     }
 
