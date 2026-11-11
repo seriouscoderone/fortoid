@@ -83,3 +83,6 @@ bd.db
 
 # Local auto-import bookkeeping
 .auto-import-issues.jsonl
+
+# Written by the beads-superpowers SessionStart hook each session
+PRIME.md
