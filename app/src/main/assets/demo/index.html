@@ -33,6 +33,22 @@
       <pre class="out"></pre>
     </section>
 
+    <section class="card">
+      <h2>Hardware key</h2>
+      <p>Create a P-256 signing key inside the phone's secure hardware (StrongBox or TEE).
+        Every signature needs your fingerprint or face; the private key never leaves the chip.
+        The page then checks the signature with WebCrypto.</p>
+      <div class="actions">
+        <button id="keystore-generate" data-call="keystore.generate">Create key</button>
+        <button id="keystore-sign" data-call="keystore.sign">Sign message</button>
+        <button id="keystore-delete" class="secondary" data-call="keystore.delete">Delete key</button>
+      </div>
+      <label class="field">Message to sign
+        <input id="sign-message" type="text" value="Hello, KERI Foundation">
+      </label>
+      <pre class="out"></pre>
+    </section>
+
     <p class="status" id="bridge-status"></p>
   </main>
   <script src="fort-native.js"></script>

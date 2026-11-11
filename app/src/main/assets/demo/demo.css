@@ -82,3 +82,15 @@ pre.out:empty { display: none; }
 pre.out.ok { color: var(--ok); }
 pre.out.err { color: var(--err); }
 .status { font-size: 13px; color: var(--muted); margin-top: 16px; }
+.field { display: block; font-size: 13px; color: var(--muted); margin-top: 12px; }
+.field input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  display: block;
+  font: inherit;
+  margin-top: 4px;
+  padding: 10px;
+  width: 100%;
+}

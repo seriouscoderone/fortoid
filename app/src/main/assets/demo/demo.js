@@ -17,6 +17,44 @@
     return { title: 'Unlock Fort Demo', subtitle: 'Biometric check from the WebView' };
   };
 
+  var KEY_ALIAS = 'demo';
+
+  function bytesToBase64(bytes) {
+    var binary = '';
+    bytes.forEach(function (b) { binary += String.fromCharCode(b); });
+    return btoa(binary);
+  }
+
+  function base64ToBytes(text) {
+    return Uint8Array.from(atob(text), function (c) { return c.charCodeAt(0); });
+  }
+
+  function messageBytes() {
+    return new TextEncoder().encode(document.getElementById('sign-message').value);
+  }
+
+  window.DemoParams['keystore-generate'] = function () { return { alias: KEY_ALIAS }; };
+  window.DemoParams['keystore-delete'] = function () { return { alias: KEY_ALIAS }; };
+  window.DemoParams['keystore-sign'] = function () {
+    return { alias: KEY_ALIAS, data: bytesToBase64(messageBytes()), subtitle: 'Fort Demo wants to sign a message' };
+  };
+
+  // Independently verify the hardware signature in the WebView with WebCrypto.
+  window.DemoResults['keystore-sign'] = function (result) {
+    return FortNative.call('keystore.publicKey', { alias: KEY_ALIAS })
+      .then(function (info) {
+        return crypto.subtle.importKey(
+          'spki', base64ToBytes(info.publicKey), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+      })
+      .then(function (key) {
+        return crypto.subtle.verify(
+          { name: 'ECDSA', hash: 'SHA-256' }, key, base64ToBytes(result.signatureP1363), messageBytes());
+      })
+      .then(function (verified) {
+        return Object.assign({ verifiedByWebCrypto: verified }, result);
+      });
+  };
+
   document.querySelectorAll('button[data-call]').forEach(function (button) {
     button.addEventListener('click', function () {
       var capability = button.getAttribute('data-call');
