@@ -33,3 +33,43 @@ Upstream remote: `https://github.com/keri-foundation/fortoid.git`.
 
 Cloud sessions need the Android SDK (`local.properties` → `sdk.dir`); there is
 no emulator (no KVM), so on-device checks happen on the owner's phone.
+
+## Working on the wallet (FortWeb fork)
+
+The wallet UI lives in `seriouscoderone/fortweb` (attach it with `add_repo`,
+clone to `/home/user/fortweb`; `upstream` = keri-foundation/fortweb). Its
+`main` = Foundation main + this project's features. Upstream PRs (e.g. #49)
+branch from `upstream/main`.
+
+Build the runtime locally (Python 3.12 venv; system Python is 3.13):
+
+```bash
+python3.12 -m venv ~/fwvenv && export PATH=~/fwvenv/bin:$PATH
+cd /home/user/fortweb && npm ci
+rm -rf build/runtime-source
+python3 scripts/acquire_runtime_source.py \
+  --url https://github.com/keri-foundation/fortweb/releases/download/runtime-source-pyodide-314-hio-0.7.20-20260910/runtime-source.tar.gz \
+  --sha256 394db70ecbed6e5718e6ec0afbcb43eaf6384e2ab78218e55067ec9e5d83fb34 \
+  --manifest-sha256 371ef8cb8c6641b68afe6799931678435e2a629dcf4aa7ba2e344efab5a10f32 \
+  --output build/runtime-source
+python3 -m pip install --no-index --no-deps build/runtime-source/wheelhouse/{packaging,setuptools,wheel}-*.whl
+export FORTWEB_RUNTIME_SOURCE_MANIFEST=build/runtime-source/manifest.json
+export FORTWEB_RUNTIME_SOURCE_MANIFEST_SHA256=371ef8cb8c6641b68afe6799931678435e2a629dcf4aa7ba2e344efab5a10f32
+npm run build:runtime            # rebuild after every app/ change
+```
+
+Tests: Playwright must use the container's Chromium, so create an uncommitted
+`playwright.local.config.ts` (spread `./playwright.config`, set
+`use.launchOptions.executablePath = '/opt/pw-browsers/chromium'`, add it to
+`.git/info/exclude`), then
+`npm run test:e2e:prepared-runtime -- -c playwright.local.config.ts --trace off`.
+Also: `npm run typecheck`, `python3 -m unittest python.test_vaulting`,
+`npm run test:runtime-publication-workflow`. Phone features are tested with a
+fake `window.bridge` (see `playwright/fortweb-*native*`/`fingerprint` specs).
+
+Ship a FortWeb change to the APK: push fortweb `main`, set its full SHA in
+Fortoid `config/fortweb-runtime.json`, verify locally with
+`scripts/build-canonical-fortweb-package.sh --fortweb-dir /home/user/fortweb`
+(needs `build/runtime-source` absent) + `node tools/import-fortweb-runtime-package.mjs`
++ `./gradlew :app:assembleDebug`, then push; CI publishes `demo-latest`.
+
