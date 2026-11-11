@@ -1,0 +1,80 @@
+name: Demo APK
+
+# Builds an installable debug APK (FortWeb wallet + Fort Demo launcher) on every
+# push to main and publishes it to the rolling "demo-latest" pre-release, so it
+# can be downloaded straight onto a phone from the repository's Releases page.
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: demo-apk
+  cancel-in-progress: true
+
+jobs:
+  demo-apk:
+    name: Build and publish demo APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out Fortoid
+        uses: actions/checkout@v4
+
+      # The wallet payload is best-effort: if the FortWeb producer build fails,
+      # still ship an APK so the native demo stays installable.
+      - name: Prepare canonical FortWeb runtime
+        id: payload
+        continue-on-error: true
+        uses: ./.github/actions/prepare-fortweb-runtime
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: |
+          if [ "${{ steps.payload.outcome }}" = "success" ]; then
+            ./gradlew :app:assembleDebug --no-daemon
+          else
+            echo "::warning::FortWeb payload unavailable; building demo-only APK"
+            ./gradlew :app:assembleDebug -x verifyPreparedPayload --no-daemon
+          fi
+          cp app/build/outputs/apk/debug/app-debug.apk fortoid-demo.apk
+
+      - name: Publish demo-latest pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAYLOAD: ${{ steps.payload.outcome }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          if [ "$PAYLOAD" = "success" ]; then
+            WALLET="Includes the FortWeb wallet (KERI Wallet icon)."
+          else
+            WALLET="FortWeb wallet build failed for this commit; only the Fort Demo icon works."
+          fi
+          NOTES="Debug build of ${SHORT_SHA}. ${WALLET}
+
+          Install on Android: open this page on the phone, tap fortoid-demo.apk,
+          and allow installs from your browser when asked. Newer builds install
+          over older ones.
+
+          Then open the **Fort Demo** icon to try the native phone features."
+
+          gh release delete demo-latest --yes --cleanup-tag || true
+          gh release create demo-latest fortoid-demo.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Fortoid demo (${SHORT_SHA})" \
+            --notes "$NOTES"
