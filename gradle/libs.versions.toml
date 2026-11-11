@@ -12,8 +12,10 @@ activity = "1.8.0"
 constraintlayout = "2.1.4"
 webkit = "1.15.0"
 biometric = "1.1.0"
+zxingEmbedded = "4.3.0"
 
 [libraries]
+zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxingEmbedded" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

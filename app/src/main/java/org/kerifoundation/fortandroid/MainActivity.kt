@@ -29,6 +29,8 @@ import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.JavaScriptReplyProxy
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanIntentResult
 import androidx.webkit.SafeBrowsingResponseCompat
 import androidx.webkit.ServiceWorkerControllerCompat
 import androidx.webkit.WebMessageCompat
@@ -188,9 +190,26 @@ class MainActivity : AppCompatActivity() {
 
     private val biometricGate by lazy { BiometricGate(this) }
 
+    // Activity-result launchers must be registered before the activity starts.
+    private var pendingQrScan: ((ScanIntentResult) -> Unit)? = null
+    private val qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
+        val callback = pendingQrScan
+        pendingQrScan = null
+        callback?.invoke(result)
+    }
+
     private fun buildNativeCapabilities() = mapOf(
         "device.info" to DeviceInfoCapability(),
-        "biometric.authenticate" to BiometricCapability(biometricGate)
+        "biometric.authenticate" to BiometricCapability(biometricGate),
+        "qr.scan" to QrScanCapability { options, onResult ->
+            if (pendingQrScan != null) {
+                false
+            } else {
+                pendingQrScan = onResult
+                qrScanLauncher.launch(options)
+                true
+            }
+        }
     ) + HardwareKeystore(applicationContext, biometricGate).capabilities()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

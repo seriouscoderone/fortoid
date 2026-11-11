@@ -26,6 +26,13 @@
             </intent-filter>
         </activity>
 
+        <!-- QR scanner (zxing-android-embedded): keep it portrait so returning
+             from a scan never forces MainActivity through a rotation restart. -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="portrait"
+            tools:replace="screenOrientation" />
+
         <!-- Second launcher icon: opens the native-capabilities demo page in the
              same hardened WebView host (see LaunchTarget). -->
         <activity-alias

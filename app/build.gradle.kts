@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.biometric)
+    implementation(libs.zxing.android.embedded)
     testImplementation(libs.junit)
     testImplementation("org.json:json:20231013")
     androidTestImplementation(libs.androidx.junit)
