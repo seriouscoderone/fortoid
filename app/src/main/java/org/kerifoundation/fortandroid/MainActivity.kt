@@ -38,6 +38,8 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import java.io.ByteArrayOutputStream
 import org.kerifoundation.fort.bridge.BridgeContract
+import org.kerifoundation.fort.bridge.NativeBridgeProtocol
+import org.kerifoundation.fort.bridge.NativeCapabilityDispatcher
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -183,6 +185,11 @@ class MainActivity : AppCompatActivity() {
 
     private var webView: WebView? = null
     private var rendererRecoveryAttempts = 0
+    private val nativeDispatcher by lazy { NativeCapabilityDispatcher(buildNativeCapabilities()) }
+
+    private fun buildNativeCapabilities() = mapOf(
+        "device.info" to DeviceInfoCapability()
+    )
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -421,7 +428,7 @@ class MainActivity : AppCompatActivity() {
                         return
                     }
 
-                    handleBridgeMessage(rawPayload)
+                    handleBridgeMessage(rawPayload, replyProxy)
                 }
             }
         )
@@ -465,7 +472,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleBridgeMessage(rawPayload: String) {
+    private fun handleBridgeMessage(rawPayload: String, replyProxy: JavaScriptReplyProxy) {
         val envelope = try {
             JSONObject(rawPayload)
         } catch (exception: JSONException) {
@@ -480,6 +487,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         when (type) {
+            NativeBridgeProtocol.REQUEST_TYPE -> nativeDispatcher.dispatch(envelope) { response ->
+                postBridgeReply(replyProxy, response)
+            }
+
             BridgeContract.BRIDGE_LIFECYCLE -> handleLifecycleMessage(envelope)
 
             BridgeContract.BRIDGE_LOG -> Log.d(
@@ -493,6 +504,16 @@ class MainActivity : AppCompatActivity() {
             )
 
             else -> Log.w(LOG_TAG, "Rejected unsupported bridge type=$type")
+        }
+    }
+
+    private fun postBridgeReply(replyProxy: JavaScriptReplyProxy, response: String) {
+        try {
+            replyProxy.postMessage(response)
+        } catch (e: Exception) {
+            // The page may have navigated or the WebView been torn down while a
+            // native capability (e.g. a biometric prompt) was in flight.
+            Log.w(LOG_TAG, "Dropped native reply; bridge no longer available", e)
         }
     }
 
