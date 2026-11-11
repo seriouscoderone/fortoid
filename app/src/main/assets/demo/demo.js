@@ -13,6 +13,10 @@
   // Cards can register a result hook to post-process a successful result.
   window.DemoResults = window.DemoResults || {};
 
+  window.DemoParams['biometric-auth'] = function () {
+    return { title: 'Unlock Fort Demo', subtitle: 'Biometric check from the WebView' };
+  };
+
   document.querySelectorAll('button[data-call]').forEach(function (button) {
     button.addEventListener('click', function () {
       var capability = button.getAttribute('data-call');

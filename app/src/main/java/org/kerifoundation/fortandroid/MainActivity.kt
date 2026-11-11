@@ -186,8 +186,11 @@ class MainActivity : AppCompatActivity() {
     private var rendererRecoveryAttempts = 0
     private val nativeDispatcher by lazy { NativeCapabilityDispatcher(buildNativeCapabilities()) }
 
+    private val biometricGate by lazy { BiometricGate(this) }
+
     private fun buildNativeCapabilities() = mapOf(
-        "device.info" to DeviceInfoCapability()
+        "device.info" to DeviceInfoCapability(),
+        "biometric.authenticate" to BiometricCapability(biometricGate)
     )
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
