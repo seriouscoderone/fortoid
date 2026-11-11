@@ -50,6 +50,22 @@
     </section>
 
     <section class="card">
+      <h2>Fingerprint-protected secret</h2>
+      <p>Encrypt a secret with a hardware key that only your fingerprint or face can use.
+        This is how the wallet remembers a vault passcode for fingerprint unlock.</p>
+      <div class="actions">
+        <button id="secret-store" data-call="secret.store">Save secret</button>
+        <button id="secret-retrieve" data-call="secret.retrieve">Reveal secret</button>
+        <button id="secret-status" class="secondary" data-call="secret.status">Status</button>
+        <button id="secret-delete" class="secondary" data-call="secret.delete">Forget</button>
+      </div>
+      <label class="field">Secret to save
+        <input id="secret-value" type="text" value="correct horse battery staple">
+      </label>
+      <pre class="out"></pre>
+    </section>
+
+    <section class="card">
       <h2>QR scan</h2>
       <p>Scan a QR code with the camera. KERI OOBI links are recognised and their AID shown.</p>
       <div class="actions">

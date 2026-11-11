@@ -55,6 +55,14 @@
       });
   };
 
+  var SECRET_KEY = 'demo';
+  window.DemoParams['secret-store'] = function () {
+    return { key: SECRET_KEY, value: document.getElementById('secret-value').value };
+  };
+  window.DemoParams['secret-retrieve'] = function () { return { key: SECRET_KEY }; };
+  window.DemoParams['secret-status'] = function () { return { key: SECRET_KEY }; };
+  window.DemoParams['secret-delete'] = function () { return { key: SECRET_KEY }; };
+
   window.DemoParams['qr-scan'] = function () {
     return { prompt: 'Scan a QR code (try a KERI OOBI)' };
   };
