@@ -80,7 +80,6 @@ private val SERVICE_WORKER_PROHIBITION_SCRIPT = """
         window.$SERVICE_WORKER_PROHIBITION_MARKER = installed;
     })();
 """.trimIndent()
-private const val PAYLOAD_URL = "https://appassets.androidplatform.net/app/index.html"
 private const val PAYLOAD_ASSET_PREFIX = "payload/"
 private const val PAYLOAD_INDEX_ASSET_PATH = "payload/app/index.html"
 private const val PYODIDE_CDN_HOST = "cdn.jsdelivr.net"
@@ -208,6 +207,7 @@ class MainActivity : AppCompatActivity() {
         }
         errorView = findViewById(R.id.error_text)
         assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/demo/", DemoAssetPathHandler(WebViewAssetLoader.AssetsPathHandler(this)))
             .addPathHandler("/", PayloadRootPathHandler(WebViewAssetLoader.AssetsPathHandler(this)))
             .build()
 
@@ -241,7 +241,7 @@ class MainActivity : AppCompatActivity() {
                 showError(R.string.payload_load_failed)
                 return
             }
-            freshWebView.loadUrl(PAYLOAD_URL)
+            freshWebView.loadUrl(LaunchTarget.startUrl(intent?.component?.className))
         }
     }
 
