@@ -33,10 +33,19 @@ The APK has two icons: **KERI Wallet** (FortWeb) and **Fort Demo** (`DemoActivit
 | `keystore.sign` | `alias`, `data` (base64, ≤2048 bytes) | ES256 signature as DER and P1363 (r‖s), base64 |
 | `keystore.delete` | `alias` | `{deleted}` |
 | `qr.scan` | `prompt?` | `text`, `format`, `isOobi`, `oobiAid?` |
+| `secret.status` | `key` | `{stored, biometricAvailable, reason?}` |
+| `secret.store` | `key`, `value` (≤1024 chars), `title?`, `subtitle?` | `{stored: true}` after a strong-biometric match |
+| `secret.retrieve` | `key`, `title?`, `subtitle?` | `{value}` after a strong-biometric match |
+| `secret.delete` | `key` | `{deleted}` |
 
 Keys are EC P-256 in the Android Keystore, StrongBox-backed when the phone has
 it; with `requireBiometric` every signature needs a fresh fingerprint/face match
 and the private key never leaves secure hardware.
+
+The secret store uses one AES-256-GCM AndroidKeyStore key (StrongBox when
+available) that needs a fresh strong biometric for every use; ciphertexts live
+in app-private storage. Enrolling a new fingerprint or face wipes the key and
+every stored secret (`invalidated`).
 
 ### Bridge protocol
 
@@ -56,8 +65,26 @@ On the wire, over `window.bridge`:
 ```
 
 Error codes: `bad_request`, `unknown_capability`, `unavailable`, `cancelled`,
-`busy`, `failed`. Protocol and dispatch live in
+`busy`, `failed`, `invalidated`. Protocol and dispatch live in
 `app/src/main/java/org/kerifoundation/fort/bridge/`.
+
+### Wallet features (FortWeb fork)
+
+The wallet in the APK is built from
+[seriouscoderone/fortweb](https://github.com/seriouscoderone/fortweb), which
+uses the bridge above:
+
+- **Wallet-first launch.** A fresh install shows *Set up your wallet*
+  (passcode only). Later launches open the default vault directly.
+- **Fingerprint unlock per vault.** After a passcode unlock the wallet offers to
+  save that vault's passcode in the secret store; its unlock screen then prompts
+  for a fingerprint automatically.
+- **Default vault.** The first vault is the default; *Settings → Make default*
+  changes it.
+- **Scan QR code** in *Add Remote Identifier* fills the OOBI URL.
+- If the vault closes in the background, the app returns to its unlock screen.
+
+Design and plans: `.internal/specs/` and `.internal/plans/`.
 
 ## Prerequisites
 
@@ -119,7 +146,9 @@ steps, without executing anything.
 
 ### Lock authority
 
-- `config/fortweb-runtime.json` pins the producer repository and commit.
+- `config/fortweb-runtime.json` pins the producer repository and commit. The
+  repository must be on the lock reader's allowlist (`keri-foundation/fortweb`
+  or `seriouscoderone/fortweb`).
 - A local checkout must equal the locked commit, or the sync is refused.
 - The imported package manifest's `fortweb_commit_sha` must equal the lock, or the
   import is refused before anything is staged.
