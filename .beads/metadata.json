@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "fortoid",
+  "project_id": "a85d9c4c-3e69-4df8-a696-340a7773ebb2"
+}
