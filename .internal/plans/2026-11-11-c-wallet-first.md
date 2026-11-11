@@ -42,6 +42,8 @@ its unlock; launch with none lands on setup.
 ### C3 (TS) "Set up your wallet" first-run screen
 Passcode + confirm (eye toggles), name defaults to "My Wallet", creates the vault (default),
 opens it, offers fingerprint (reuse the B offer, moved to a shared module), lands on Identifiers.
+No identifier is created during setup (owner decision: applications will create or suggest
+AIDs later; the wallet stays in the background).
 AC: Playwright: mismatched/empty passcode blocked; success path calls create → open; offer shown.
 
 ### C4 (TS) "Make default" in the Vaults drawer

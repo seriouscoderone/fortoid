@@ -18,6 +18,11 @@ Upstream remote: `https://github.com/keri-foundation/fortoid.git`.
   authentication and signing. Do not propose passkeys/WebAuthn, OAuth or
   password logins as alternatives. Phone hardware (secure chip, biometrics) is
   welcome as a way to protect and unlock KERI material, never to replace it.
+- **Application-first product direction.** The owner builds applications that
+  solve people's problems; the wallet, vaults and identifiers stay as far in the
+  background as possible (expect FortWeb to be re-skinned). Don't add identity
+  setup steps to onboarding: applications will create or suggest AIDs when they
+  need them.
 
 ## Build
 
