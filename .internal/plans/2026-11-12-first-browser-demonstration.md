@@ -456,7 +456,7 @@ git push origin dev
 - No request leaves the page while taking on a role (count routed and unrouted requests in the test from the click to the listing).
 - After a reload with every request to `mad.example.test` aborted, unlocking shows the role with its responsibilities.
 - Taking on `instructor` with "Select an existing identifier" lists it under that identifier; doing it again shows "This identifier has already taken on that role."
-- After the worker is discarded (simulate 31 s hidden, as `fortweb-wallet-first.spec.ts` does) and the vault reopened, "Take on" without re-reading shows "Open the address again before taking on a role."
+- After the worker is discarded (simulate 31 s hidden, as `fortweb-wallet-first.spec.ts` does) and the vault reopened, the Roles page shows no read, so there is no "Take on" to press, and a runtime that has made no read answers `roles.takeOn` with `CONFLICT` "Open the address again before taking on a role." (Changed during Task 6: the kept read is cleared when the vault closes underneath the page, so pressing "Take on" cannot reach that sentence on this path.)
 - "Remove" deletes the role; after a reload it is still gone.
 - All browser tests and `python.test_vaulting` pass; `npm run typecheck` passes.
 
