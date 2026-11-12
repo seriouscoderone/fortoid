@@ -10,8 +10,16 @@ Upstream remote: `https://github.com/keri-foundation/fortoid.git`.
   In a fresh container: `npm install -g @beads/bd`,
   `git config beads.role maintainer`, then
   `bd init --non-interactive -p fortoid --skip-agents --init-if-missing`.
-- Make **very small commits** (one logical change each) and **push straight to
-  `main`** on this fork as you go. No pull requests, no feature branches.
+- Make **very small commits** (one logical change each) and **push to the `dev`
+  branch** as you go. No pull requests.
+- **`main` is an exact copy of the Foundation's `main`** on every fork (fortoid,
+  fortweb, fortios). Never commit to it: it only ever fast-forwards from
+  `upstream/main`, so upstream changes arrive cleanly. To receive them:
+  `git fetch upstream && git push origin upstream/main:main`, then
+  `git merge upstream/main` on `dev`. (Owner, 2026-11-12; replaces the earlier
+  "push straight to `main`".)
+- A cloud session is given its own branch (`ccr-...`). Keep it identical to
+  `dev` and push both.
 - Current focus is a proof-of-concept demo for the KERI Foundation; signed
   release builds are out of scope for now.
 - **KERI-only identity.** Everything the owner builds uses KERI for identity,
@@ -38,8 +46,8 @@ no emulator (no KVM), so on-device checks happen on the owner's phone.
 
 The wallet UI lives in `seriouscoderone/fortweb` (attach it with `add_repo`,
 clone to `/home/user/fortweb`; `upstream` = keri-foundation/fortweb). Its
-`main` = Foundation main + this project's features. Upstream PRs (e.g. #49)
-branch from `upstream/main`.
+`dev` = Foundation main + this project's features; its `main` mirrors the
+Foundation's. Upstream PRs (e.g. #49) branch from `upstream/main`.
 
 Build the runtime locally (Python 3.12 venv; system Python is 3.13):
 
@@ -67,19 +75,19 @@ Also: `npm run typecheck`, `python3 -m unittest python.test_vaulting`,
 `npm run test:runtime-publication-workflow`. Phone features are tested with a
 fake `window.bridge` (see `playwright/fortweb-*native*`/`fingerprint` specs).
 
-Ship a FortWeb change to the APK: push fortweb `main`, set its full SHA in
+Ship a FortWeb change to the APK: push fortweb `dev`, set its full SHA in
 Fortoid `config/fortweb-runtime.json`, verify locally with
 `scripts/build-canonical-fortweb-package.sh --fortweb-dir /home/user/fortweb`
 (needs `build/runtime-source` absent) + `node tools/import-fortweb-runtime-package.mjs`
 + `./gradlew :app:assembleDebug`, then push; CI publishes `demo-latest`.
 
-After every pin, check **all** workflows on `main`, not only Demo APK. The
+After every pin, check **all** workflows on `dev`, not only Demo APK. The
 Android API 36 Startup Proof boots the real wallet on a 2-core emulator that
 draws in software, with a 30 s boot budget (12-23 s when nothing is drawn).
 Anything that keeps drawing during start-up eats that budget: a CSS animation
 on the start page failed the proof seven runs in a row. Keep start-up UI still (the
 loading bar moves once a second on a timer, see fortweb
-`app/ui/primitives/loading-bar.ts`). Pushing to `main` cancels a proof run that
+`app/ui/primitives/loading-bar.ts`). Pushing to `dev` cancels a proof run that
 is still in progress, so wait for it before the next push when you need its
 result.
 
