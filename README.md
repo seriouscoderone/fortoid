@@ -14,7 +14,7 @@ bundled demo page (`app/src/main/assets/demo/`) exercising each capability.
 
 ### Install on a phone
 
-Every push to `main` builds a debug APK (`.github/workflows/demo-apk.yml`) and
+Every push to `dev` builds a debug APK (`.github/workflows/demo-apk.yml`) and
 publishes it as the **demo-latest** pre-release. On the phone, open the
 repository's Releases page, download `fortoid-demo.apk`, and allow installs
 from your browser when Android asks. Newer builds install over older ones
