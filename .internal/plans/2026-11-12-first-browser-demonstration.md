@@ -364,7 +364,8 @@ git push origin dev
     `{"source": {"address","host","by","oobi","introductions","catalogs"}, "checked": int, "dropped": {"entries","publications"}, "publications": [{"target","name","description","tags","collection","title","roles":[...],"problem": str | None}], "definitions": {said: str}}`.
     `problem` is `None`, `"mismatch"` (a definition failed its SAID check or was not served), or `"limit"` (the read's definition limit was reached before this publication). A publication with a problem has `roles == []`.
   - `async roling.dispatch(method: str, params: dict) -> dict`. `sources.read` takes `{"address": str}` and returns the dictionary above without `"definitions"`; it keeps the full result in the module variable `_LAST_READ` for Task 6.
-  - `SourceFault` codes map to `vaulting.RuntimeFault` codes: `BAD_ADDRESS` to `VALIDATION`; `UNREACHABLE`, `NOT_READABLE`, `BAD_SOURCE`, `TOO_MUCH` to `UPSTREAM`. The message is the spec's sentence with the host filled in.
+  - `SourceFault` codes map to the wallet's existing `vaulting.RuntimeFault` codes: `BAD_ADDRESS` to `VALIDATION`; `UNREACHABLE` and `NOT_READABLE` to `NETWORK_ERROR`; `BAD_SOURCE` and `TOO_MUCH` to `BAD_RESPONSE`. Never `TIMEOUT`, which makes the bridge restart the worker. The message is the spec's sentence with the host filled in. (Decided during execution: the plan first named a new code `UPSTREAM`; the existing two already mean this.)
+  - `app/runtime/bridge.ts`: `sources.read` gets its own entry in `METHOD_TIMEOUT_MS`, 75,000 ms, because a read may take 60 s and the default is 30 s.
 - `roling._fetch_bytes(url, timeout_ms)`: `js.fetch` with the fetch options in Global Constraints and an `AbortController` timeout; requires status 200 and a JSON content type; reads `response.body` with a reader and stops with `TOO_MUCH` past 1,000,000 bytes. When the fetch rejects, it makes one probe with `mode: "no-cors"`: if the probe resolves, raise `NOT_READABLE` ("<host> does not allow wallets to read it yet."), else `UNREACHABLE` ("Could not reach <host>.").
 - The digest is `blake3.blake3(data).digest()` from the bundled wheel.
 
@@ -374,8 +375,8 @@ git push origin dev
 
 **Acceptance Criteria (browser tests call the runtime method through the page's bridge, UI comes in Task 5):**
 - With the fixture source, `sources.read {address: "mad.example.test"}` returns host `mad.example.test`, 3 publications, `checked` 26, and the `dropin-class` publication's roles as in Task 3.
-- `cors: false` gives the `UPSTREAM` error "mad.example.test does not allow wallets to read it yet."
-- `tamper` on an rr of `class-brick` gives that publication `problem: "mismatch"` and no roles; the other publications that do not use it keep their roles.
+- `cors: false` gives the `NETWORK_ERROR` error "mad.example.test does not allow wallets to read it yet."
+- `tamper` on an rr of `class-brick` gives every publication that uses it `problem: "mismatch"` and no roles (in this fixture all three use both of its rrs); tampering a definition only `dropin-class` uses leaves the other two with their roles.
 - `oversize` gives "mad.example.test publishes more than the wallet reads in one go."
 - An unroutable host gives "Could not reach <host>."
 - `sources.read {address: "http://x"}` gives the `VALIDATION` error "That is not an address the wallet can open."
