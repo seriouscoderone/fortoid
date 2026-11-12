@@ -1,7 +1,7 @@
 name: Demo APK
 
 # Builds an installable debug APK (FortWeb wallet + Fort Demo launcher) on every
-# push to main and publishes it to the rolling "demo-latest" pre-release, so it
+# push to dev and publishes it to the rolling "demo-latest" pre-release, so it
 # can be downloaded straight onto a phone from the repository's Releases page.
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
 on:
   push:
     branches:
-      - main
+      - dev
   workflow_dispatch:
 
 concurrency:
