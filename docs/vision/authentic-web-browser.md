@@ -2,6 +2,12 @@
 
 *Status: vision draft for discussion. Owner: Fortoid fork (seriouscoderone).*
 
+> **Parts of this draft are out of date (12 November 2026).** Later decisions
+> replace them: multi-sig across devices is not planned, and each wallet (phone,
+> desktop, web) is separate with its own AIDs; applications are not distributed
+> as signed code bundles; and "one AID per application" is no longer assumed. A
+> revised vision is being drafted and will replace this page.
+
 ## The idea
 
 The web is shifting from **trust in locations and accounts** to **trust in
