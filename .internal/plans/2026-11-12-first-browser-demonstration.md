@@ -411,12 +411,12 @@ git push origin dev
 - Heading "Roles". A form with a labelled text field "Address" (placeholder `example.org`), a button "Open", and a status line.
 - After a read: the host as a heading, a line "<n> publications, <m> definitions checked", "Unverified: says it is run by <by>" when the source states `by`, and one card per publication with its name, description, collection and tags. Opening a card (a button "Show roles") lists its roles; each role lists its responsibilities as "<alias>: relies on <names>; attests <names>; produces <name>" with empty parts left out, and a button "Take on" (wired in Task 6; disabled until then). A publication with `problem == "mismatch"` shows "A definition from <host> does not match its identifier." and no roles; `"limit"` shows "<host> publishes more than the wallet reads in one go."
 - Section "My roles" with the empty state "No roles yet. Open an address to see what you can take on."
-- No animation; the status line shows "Reading <host>..." as plain text while the read runs.
+- No animation; the status line shows "Reading..." as plain text while the read runs, and the Open button is disabled. (Decided during execution: the page does not echo what was typed before the engine has validated it.)
 
 **Acceptance Criteria:**
 - After setting up or unlocking a wallet, the page shown is Roles, with the empty state.
 - Typing `mad.example.test` and pressing Open (or Enter) shows the host, "3 publications, 26 definitions checked" and three cards.
-- "Show roles" on "Drop-in takes a class" lists cashier, front-desk, instructor, patron and recorder; the instructor shows "class-attended: relies on enrollment, attended; attests class-attended; produces class-attended".
+- "Show roles" on the drop-in publication lists cashier, front-desk, instructor, patron and recorder; the instructor shows "class-attended: relies on enrollment (as seat), attended (as visit); attests class-attended; produces class-attended". (Decided during execution: a relied-on item shows what it is relied on as.)
 - The error cases of Task 4 show their sentence in the status line, announced to assistive technology (`announce` from `app/ui/core/a11y.ts`).
 - A source whose publication name contains `<img src=x onerror=alert(1)>` shows that text literally and creates no element (assert no `img` inside the page section and no dialog event).
 - The accessibility spec (`playwright/fortweb-accessibility.spec.ts`) passes with the Roles page added to its routes.
