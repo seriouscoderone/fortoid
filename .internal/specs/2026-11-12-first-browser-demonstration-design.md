@@ -2,7 +2,9 @@
 
 > **Date:** 2026-11-12
 > **Bead:** fortoid-bx6
-> **Status:** proposed, awaiting the owner's approval
+> **Status:** approved by the owner on 2026-11-12 with one change (D3). D1 still
+> needs the owner's explicit yes, because it changes `mad-discovery`'s design and
+> their hosting.
 
 ## Goal
 
@@ -14,16 +16,17 @@ publication format (`mad-discovery`), and the owner's rulings on roles.
 ## What the owner will see
 
 1. After unlocking, the wallet opens on a new **Roles** page: an address box,
-   and "My roles" (empty at first).
+   and "My roles" (empty at first). No roles can be listed before an address
+   has been opened: roles come from what organizations publish.
 2. Typing `mad.seriouscoder.one` and pressing Open reads that source. The wallet
    shows the host, "3 publications, 26 definitions checked", and the
    publications by name.
 3. Opening "Drop-in takes a class" lists its roles: cashier, front-desk,
    instructor, patron, recorder. Each role shows its responsibilities, with what
    each relies on and what it produces.
-4. "Take on" asks which identifier to use: a new one (the default, named after
-   the role) or an existing one. The role then appears under My roles with the
-   warning "Not appointed yet".
+4. "Take on" asks which identifier to use, in the style of the AWS console:
+   create a new one or select an existing one. The role then appears under My
+   roles with the warning "Not appointed yet".
 5. My roles works with no network. Removing a role deletes the local record.
 
 ## Owner rulings this design applies
@@ -37,6 +40,14 @@ publication format (`mad-discovery`), and the owner's rulings on roles.
 - A role is a collection of credentials held by an AID. Missing credentials do
   not block: the wallet warns, and the AID acquires them later (rulings 13, 14).
 - Applications first: the wallet, vaults and identifiers stay in the background.
+- The wallet is a node. It takes on responsibilities as an identity (owner,
+  2026-11-12).
+- The protocol is open, in the spirit of Bitcoin's (owner, 2026-11-12). Anyone
+  may appoint themselves to any role, a gym owner included, and issue grants to
+  others. A grant matters only to those who accept its issuer as an authority.
+  Trust comes from whom people already know and accept, not from the wallet.
+  Becoming a company's cashier therefore needs that company's owner to issue
+  the grant, and a company first has to establish its own authority.
 
 ## Decisions made here (the owner may overrule any of them)
 
@@ -60,8 +71,11 @@ relies on (for the instructor: an enrollment and an attendance) is shown as
 information, not as a warning, because those are presented by other parties.
 In this slice the warning cannot clear: the wallet does not hold grants yet.
 
-**D3. Which identifier: a new one by default.** A new AID keeps roles from being
-linked to each other. An existing identifier can be chosen instead.
+**D3. Which identifier: the person chooses, create new or select existing.**
+Owner, 2026-11-12: like the AWS console wherever a role is needed, offer
+"create new" and "select from existing" side by side. A new AID keeps roles
+from being linked to each other; an existing one keeps things simple. When the
+vault has no identifier yet, only "create new" is offered.
 
 **D4. Where the reading and checking run: in the wallet's Python engine.** It
 already ships Blake3. The rules are `mad-discovery`'s, and the tests use
@@ -188,7 +202,13 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
 ## Later slices (not in this design)
 
 - Holding grants, so the warning can clear, and the processes for acquiring
-  them.
+  them. First step: an owner appoints themself (a self-issued grant) and then
+  appoints someone else, for example a cashier. Whether anyone accepts that
+  owner as an authority is each receiver's own decision.
+- Plainer examples to explain the idea, in rising richness (owner,
+  2026-11-12): an online shop, where a person is only a customer; a
+  ride-hailing service, where a person can be a customer or a provider; a
+  network-marketing company, with many kinds of actor.
 - Verifying who runs a source through its OOBI.
 - Following introductions and catalogs.
 - Performing a responsibility and exchanging with other actors.
