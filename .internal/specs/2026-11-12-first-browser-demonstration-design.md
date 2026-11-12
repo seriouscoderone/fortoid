@@ -27,6 +27,8 @@ publication format (`mad-discovery`), and the owner's rulings on roles.
    create a new one or select an existing one. The role then appears under My
    roles with the warning "Not appointed yet".
 5. My roles works with no network. Removing a role deletes the local record.
+6. What was last read stays on the Roles page until another address is opened
+   or the wallet is locked. It is kept in memory only.
 
 ## Owner rulings this design applies
 
