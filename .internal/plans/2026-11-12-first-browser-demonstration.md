@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Work on `dev` in every fork; never commit to `main`. Very small commits, pushed as you go. No pull requests.
-- Commit messages end with the two attribution lines used throughout this repository's history (`Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>` and the `Claude-Session:` line). Include the bead id.
+- Commit messages include the bead id and end with the attribution lines your session's instructions give you.
 - KERI-only identity. Nothing here adds a login of any kind.
 - Nothing fetched from a source is executed, rendered as markup, or turned into a link. Render with `escapeHtml` (`app/shared/dom.ts`) or `textContent`.
 - Address rules (from `mad-discovery` `src/address.ts`): https only, at most 512 characters, no user name, password, query, fragment or port, no IP literal, no `localhost` or `*.localhost`, host not ending in `.`, path ends `/source.json`.
