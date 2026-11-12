@@ -25,11 +25,11 @@
 
 ---
 
-### Task 1: `mad-discovery` lets browser wallets read a source — HELD
+### Task 1: `mad-discovery` lets browser wallets read a source
 
-Held until the owner confirms decision D1 (it changes `mad-discovery`'s approved design and the owner's CloudFront). Nothing in Tasks 2 to 6 depends on it; browser tests use a routed fixture source. Only the phone check in Task 7 needs the live source to send the header.
+Released 2026-11-12: the owner said yes to the header (decision D1). Commits go to `mad-discovery`'s `main` (it is the owner's own repository, not a fork). Nothing in Tasks 2 to 6 depends on it; browser tests use a routed fixture source. The phone check in Task 7 needs the owner to add the header in CloudFront.
 
-**Files (repository `seriouscoderone/mad-discovery`, attach with push when released):**
+**Files (repository `seriouscoderone/mad-discovery`, cloned with push access at `/home/user/mad-discovery`):**
 - Modify: `docs/design.md` (the paragraph "A browser is not expected to read a source"), `README.md` (rulings), `deploy/README.md`
 - Modify: `src/fetch.ts`, `src/cli.ts` (`verify` reports the header)
 - Test: `tests/fetch.test.ts`, `tests/cli.test.ts`
@@ -37,7 +37,7 @@ Held until the owner confirms decision D1 (it changes `mad-discovery`'s approved
 **Acceptance Criteria:**
 - The design states that a source that wants browser wallets to read it sends `Access-Control-Allow-Origin: *` on `source.json` and `definitions/*`.
 - `verify <address>` prints whether the source sends that header, and does not fail when it is absent.
-- `deploy/README.md` gives the CloudFront step (attach the managed "SimpleCORS" response headers policy to both distributions).
+- `deploy/README.md` gives the CloudFront step for both distributions: attach the managed response headers policy "SimpleCORS" (ID `60669652-455b-4ae9-85a4-c4c02393f86c`, which adds `Access-Control-Allow-Origin: *` to responses for simple CORS requests) to the cache behavior. Console: Distributions, the distribution, Behaviors, select the behavior, Edit, "Response headers policy", SimpleCORS, Save changes. CLI: `aws cloudfront get-distribution-config --id <id> --output yaml > dist-config.yaml`; in the cache behavior add `ResponseHeadersPolicyId: 60669652-455b-4ae9-85a4-c4c02393f86c`; rename the `ETag` field to `IfMatch`; `aws cloudfront update-distribution --id <id> --cli-input-yaml file://dist-config.yaml`. (Checked against the AWS CloudFront Developer Guide on 2026-11-12.)
 - `npm run check` and `npm test` pass. The repository's three rules in its `CLAUDE.md` hold.
 
 ---

@@ -2,9 +2,8 @@
 
 > **Date:** 2026-11-12
 > **Bead:** fortoid-bx6
-> **Status:** approved by the owner on 2026-11-12 with one change (D3). D1 still
-> needs the owner's explicit yes, because it changes `mad-discovery`'s design and
-> their hosting.
+> **Status:** approved by the owner on 2026-11-12 with one change (D3). The owner
+> also said yes to the header (D1) the same day.
 
 ## Goal
 
