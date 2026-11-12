@@ -73,3 +73,13 @@ Fortoid `config/fortweb-runtime.json`, verify locally with
 (needs `build/runtime-source` absent) + `node tools/import-fortweb-runtime-package.mjs`
 + `./gradlew :app:assembleDebug`, then push; CI publishes `demo-latest`.
 
+After every pin, check **all** workflows on `main`, not only Demo APK. The
+Android API 36 Startup Proof boots the real wallet on a 2-core emulator that
+draws in software, with a 30 s boot budget (12-23 s when nothing is drawn).
+Anything that keeps drawing during start-up eats that budget: a CSS animation
+on the start page failed the proof for eight runs. Keep start-up UI still (the
+loading bar moves once a second on a timer, see fortweb
+`app/ui/primitives/loading-bar.ts`). Pushing to `main` cancels a proof run that
+is still in progress, so wait for it before the next push when you need its
+result.
+
