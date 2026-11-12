@@ -14,7 +14,7 @@
 - Commit messages include the bead id and end with the attribution lines your session's instructions give you.
 - KERI-only identity. Nothing here adds a login of any kind.
 - Nothing fetched from a source is executed, rendered as markup, or turned into a link. Render with `escapeHtml` (`app/shared/dom.ts`) or `textContent`.
-- Address rules (from `mad-discovery` `src/address.ts`): https only, at most 512 characters, no user name, password, query, fragment or port, no IP literal, no `localhost` or `*.localhost`, host not ending in `.`, path ends `/source.json`.
+- Address rules (from `mad-discovery` `src/address.ts`): https only, at most 512 characters, no user name, password, query, fragment or port, no IP literal, no `localhost` or `*.localhost`, host not ending in `.`, path ends `/source.json`. The wallet is stricter in two ways, because it hands the address to the browser's fetch and cannot check what a name resolves to: a host needs at least two labels and a last label that starts with a letter (this refuses every shorthand a browser would read as an IP address, such as `2130706433` or `127.1`), and a path may hold only letters, digits, `.`, `_`, `~`, `-` and `/`, with no empty, `.` or `..` segment.
 - Limits (from `mad-discovery` `src/limits.ts`): one file at most 1,000,000 bytes; one request 10,000 ms; at most 50 definitions per read; one read 60,000 ms; JSON nesting at most 64; publication name 200, description 2000, at most 32 tags of 64, collection 200 characters, no C0/C1 control characters.
 - SAID pattern `^E[A-P][A-Za-z0-9_-]{42}$`; fill is 44 `#`.
 - Fetch options: `mode: "cors"`, `credentials: "omit"`, `redirect: "error"`, `referrerPolicy: "no-referrer"`, `cache: "no-store"`; status 200; content type starts with `application/json`.
@@ -184,6 +184,8 @@ Run: `cd /home/user/fortweb && ~/fwvenv/bin/python -m unittest python.test_sourc
 Expected: errors, `sourcing.py` does not exist.
 
 - [ ] **Step 4: Implement** (`app/runtime/sourcing.py`)
+
+> **Corrected after review (2026-11-12).** The `normalize_address` below, as first written in this plan, accepted IP shorthands (`2130706433`, `0x7f.1`, `127.1`) and non-canonical paths. The reviewed version is in FortWeb at `982f732`; it adds the two stricter rules now listed in Global Constraints. Use the repository's function, not this listing.
 
 ```python
 """Reading a mad-discovery source: the address and SAID rules.

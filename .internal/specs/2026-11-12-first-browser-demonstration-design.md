@@ -104,7 +104,11 @@ stay in the menu.
 - `normalize_address(text)` accepts `host`, `host/path` or a full address and
   returns the canonical `https://host/.../source.json`. Rules as in
   `mad-discovery`: https only, at most 512 characters, no user name, password,
-  query, fragment or port, no IP literal, no `localhost`.
+  query, fragment or port, no IP literal, no `localhost`. The wallet is
+  stricter in two ways, because the browser's fetch parses the address and the
+  wallet cannot check what a name resolves to: a host needs at least two labels
+  and a last label that starts with a letter, and a path may hold only letters,
+  digits, `.`, `_`, `~`, `-` and `/`, with no empty, `.` or `..` segment.
 - `read_source(address)` fetches the source document, validates it, fetches each
   publication's target and the definitions that target refers to, and checks
   every one against its SAID.
