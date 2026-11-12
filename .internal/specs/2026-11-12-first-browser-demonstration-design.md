@@ -42,12 +42,14 @@ publication format (`mad-discovery`), and the owner's rulings on roles.
 - Applications first: the wallet, vaults and identifiers stay in the background.
 - The wallet is a node. It takes on responsibilities as an identity (owner,
   2026-11-12).
-- The protocol is open, in the spirit of Bitcoin's (owner, 2026-11-12). Anyone
-  may appoint themselves to any role, a gym owner included, and issue grants to
-  others. A grant matters only to those who accept its issuer as an authority.
-  Trust comes from whom people already know and accept, not from the wallet.
-  Becoming a company's cashier therefore needs that company's owner to issue
-  the grant, and a company first has to establish its own authority.
+- The protocol is open, in the spirit of Bitcoin's (owner, 2026-11-12). Who may
+  issue a credential is set by the published definitions: some credentials are
+  self-issuing, so their holder issues them to itself, and others have to be
+  issued by someone else. Nobody can simply appoint themselves to any role. A
+  gym owner's own credential may be self-issuing; a cashier's comes from the
+  owner. A credential matters only to those who accept its issuer as an
+  authority, so trust comes from whom people already know and accept, and a
+  company first has to establish its own authority.
 
 ## Decisions made here (the owner may overrule any of them)
 
@@ -206,9 +208,12 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
 ## Later slices (not in this design)
 
 - Holding grants, so the warning can clear, and the processes for acquiring
-  them. First step: an owner appoints themself (a self-issued grant) and then
-  appoints someone else, for example a cashier. Whether anyone accepts that
-  owner as an authority is each receiver's own decision.
+  them. First step: a credential the definitions mark as self-issuing, issued
+  by its holder to itself (an owner's, for example), and then one that must
+  come from someone else (a cashier's, from that owner). Whether anyone accepts
+  the owner as an authority is each receiver's own decision. The published test
+  definitions say which responsibility issues each authorization (`issue`), but
+  carry no mark for self-issuing yet.
 - Plainer examples to explain the idea, in rising richness (owner,
   2026-11-12): an online shop, where a person is only a customer; a
   ride-hailing service, where a person can be a customer or a provider; a
