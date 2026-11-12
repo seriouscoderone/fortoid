@@ -89,6 +89,44 @@ need a physical iPhone. The simulator can fake a Face ID match and has no
 camera. Installing on the owner's iPhone means building from Xcode on their Mac
 with their Apple ID; there is no equivalent of handing over an APK.
 
+### 6. Health check result (2026-11-12, after the fork was synced)
+
+> **Confidence:** high. Run locally on the synced fork; matches the
+> Foundation's own statement in an open pull request.
+
+Built our wallet package (`seriouscoderone/fortweb` `dev` at `38d50ea`, runtime
+source `runtime-source-pyodide-314-hio-0.7.20-20260910`) and ran the iOS
+repository's Linux-side checks against it:
+
+- Pass: tool tests (189), `make payload-contract` (import, integrity over 168
+  files, Pyodide 314.0.5 assertion, containment), bridge contract, platform
+  configuration, repository hygiene.
+- **Fail:** `npm run validate:runtime-requirements-compatibility` reports
+  `Unsupported requirements schema 'fort.runtime-requirements.v2'`.
+
+Cause: the iOS host declares support for requirements v1 only and a `deny-all`
+network policy (`runtime-platform-config.json`; `WebContainerViewController`
+tells the wallet `networkAllowed: false`). Today's wallet requires v2, which
+includes `wallet_service_https`: HTTPS requests to witnesses, watchers and OOBI
+addresses. Fortoid already supports v2 with the policy
+`wallet-service-https-only`.
+
+The Foundation states the same gap in open pull request
+keri-foundation/fortios#41 (`docs/developer-guide.md`): "this host configuration
+does not establish HTTPS wallet-service support and does not declare v2
+compatibility". Pull requests #41 and #42 (3 to 7 November) show active iOS
+work, mostly credential-recovery tests.
+
+In CI this check runs before `xcodebuild`, so the simulator tests would not
+start with our wallet. "iOS up to speed" therefore has two parts: v2 host
+support first (configuration, the v2 validator that Fortoid already has, and
+the shell's network policy), then the reply path and the 11 capabilities.
+
+Fork state: `main` equals upstream (`c293f6a`); `dev` is `main` plus the CI
+trigger for `dev`. The pins to our wallet are not on `dev`, because they would
+turn it red. They are six string replacements in `ios-security.yml`,
+`release-certification.yml`, `Makefile` and `docs/developer-guide.md`.
+
 ## Comparisons
 
 | | Android (Fortoid fork) | iOS (Foundation upstream) |
@@ -132,7 +170,10 @@ requirement (bead fortoid-bgy).
 
 ## Open Questions
 
-- Does today's wallet boot in the iOS shell? Step 2 answers it.
+- Does today's wallet boot in the iOS shell? Not answered yet: the v2 check
+  stops CI before the simulator starts (finding 6).
+- Will the Foundation add v2 host support to iOS soon? Their open pull requests
+  suggest it is next; doing it ourselves would duplicate that.
 - Does the owner's Mac have Xcode 26.5, which the project pins?
 - Will the demonstration for the Foundation be shown on an iPhone? If so, step 3
   moves ahead of the demonstration work.
