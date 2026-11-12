@@ -130,6 +130,10 @@ stay in the menu.
   cannot exhaust a phone's memory.
 - Fetch rules: https only, no credentials, no referrer, redirects refused, no
   cache, status 200 with a JSON content type, body read under the byte limit.
+- Text rules, for the wallet only: JSON whose strings include a lone surrogate
+  is refused, because such text cannot be stored or sent as UTF-8; and a name
+  taken from a definition for display (role, alias, name) is used only if it is
+  at most 200 characters with no control characters.
 
 Interpreting definitions is kept in one function, `roles_of_selection`, because
 the format (`kind`, `rrs`, `role`, `rely_on`, `attest`, `outcome`) is a
@@ -171,6 +175,8 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
 | A definition fails its SAID check | The publication is refused: "A definition from <host> does not match its identifier." |
 | A limit is exceeded | "<host> publishes more than the wallet reads in one go." |
 | Identifier name already used | A numbered name is offered. |
+| A role cannot be stored | "The wallet could not keep that role." Nothing is changed, and no identifier is made. |
+| My roles cannot be read | "My roles could not be read." The address box still works. |
 
 ## Privacy and security
 

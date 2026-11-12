@@ -16,6 +16,7 @@
 - Nothing fetched from a source is executed, rendered as markup, or turned into a link. Render with `escapeHtml` (`app/shared/dom.ts`) or `textContent`.
 - Address rules (from `mad-discovery` `src/address.ts`): https only, at most 512 characters, no user name, password, query, fragment or port, no IP literal, no `localhost` or `*.localhost`, host not ending in `.`, path ends `/source.json`. The wallet is stricter in two ways, because it hands the address to the browser's fetch and cannot check what a name resolves to: a host needs at least two labels and a last label that starts with a letter (this refuses every shorthand a browser would read as an IP address, such as `2130706433` or `127.1`), and a path may hold only letters, digits, `.`, `_`, `~`, `-` and `/`, with no empty, `.` or `..` segment.
 - Limits (from `mad-discovery` `src/limits.ts`): one file at most 1,000,000 bytes; one request 10,000 ms; at most 50 definitions per read; one read 60,000 ms; JSON nesting at most 64; publication name 200, description 2000, at most 32 tags of 64, collection 200 characters, no C0/C1 control characters. Wallet-only limits added in review: at most 4,000,000 bytes per read over the source document and all definitions (a publication cut by it gets `problem: "limit"`), and 3,000 ms for the probe that tells "not readable" from "unreachable".
+- Text rules added in the Task 6 review. JSON whose strings (member names or values) include a lone surrogate is refused wherever the wallet parses a source document or a definition: such text cannot be stored or sent as UTF-8. `mad-discovery` accepts it, so this is a third way the wallet is stricter. A string taken from a definition for display (`role`, `alias`, `name`, `as`) is used only if it is at most 200 UTF-16 units and has no C0/C1 control character; otherwise it is treated as a member of the wrong type.
 - A read never holds the worker's request lock (it touches no vault), reads may overlap, and the newest read's result is the one kept for taking on a role.
 - Known limitation: a source whose `/source.json` redirects is told "<host> does not allow wallets to read it yet", because the read refuses redirects and the probe then succeeds.
 - SAID pattern `^E[A-P][A-Za-z0-9_-]{42}$`; fill is 44 `#`.
@@ -449,6 +450,16 @@ git push origin dev
   - Each writing method ends with `await vaulting.persist_and_reload()`.
 - The last read stays on the Roles page (address, result, which publications are open) until another address is opened or the vault is locked or switched. It is kept in the app's memory only, per open vault, so a re-render (the phone menu, a refresh of My roles after taking on a role) does not wipe it. A read that finishes after its page is gone neither writes nor announces. (Decided after the Task 5 review.)
 - Dialog: title "Take on <role>"; radio "Create a new identifier" with a name field prefilled with the role name (a number is appended if that name is taken: `cashier 2`), and radio "Select an existing identifier" with a list of the vault's identifiers. With no identifiers, only the first option is shown. Buttons "Take on" and "Cancel".
+- Decided in the Task 6 review (fix round 1):
+  - A failed `roles.takeOn` changes nothing. Every refusal comes first; the role's data is written, and so proven storable, before the identifier is made; a failure before the persist removes what the call wrote, emits a diagnostic and answers `BAD_RESPONSE` "The wallet could not keep that role."
+  - `roles.takeOn` also takes `"publication": str`, the publication's name as read, so two publications with one target are told apart.
+  - A role stores only the definitions the read resolved for its publication, so it reads the same from the store as it did when read.
+  - The engine forgets its last read when a vault is opened, locked or closed.
+  - `roles.list` treats a stored definition it cannot parse as missing. If `roles.list` itself fails, the Roles page still shows the address box and My roles says "My roles could not be read."
+  - `roles.takeOn` has the bridge budget of `identifiers.create` (90,000 ms): it makes an identifier too.
+  - Dialog: focus opens on the selected choice; an empty name ("Enter a name for the new identifier.") is announced and focus moves to the name field; a failure that arrives after the dialog was closed is shown on the page. The shared modal composite is not changed.
+  - "Remove" buttons are named "Remove <role>, identifier <alias>".
+  - The browser tests for roles are three spec files (reading, taking on, the last read), so no file is reported as slow.
 - My roles card: role, "<publication> at <host>", "Identifier: <alias>", the warning "Not appointed yet" with the sentence "Nobody has granted this identifier the role. This wallet cannot hold grants yet.", the responsibilities, and a button "Remove".
 
 **Acceptance Criteria:**
