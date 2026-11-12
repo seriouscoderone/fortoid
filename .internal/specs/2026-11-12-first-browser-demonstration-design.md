@@ -123,7 +123,9 @@ stay in the menu.
   44-character `E` SAID, equals the SAID; putting the SAID back gives the served
   bytes.
 - Limits: one file at most 1,000,000 bytes; one request 10 s; at most 50
-  definitions per source; one read 60 s; JSON nesting at most 64.
+  definitions per source; one read 60 s; JSON nesting at most 64; and, for the
+  wallet only, at most 4,000,000 bytes per read in total, so a hostile source
+  cannot exhaust a phone's memory.
 - Fetch rules: https only, no credentials, no referrer, redirects refused, no
   cache, status 200 with a JSON content type, body read under the byte limit.
 
