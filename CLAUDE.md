@@ -20,6 +20,14 @@ Upstream remote: `https://github.com/keri-foundation/fortoid.git`.
   "push straight to `main`".)
 - A cloud session is given its own branch (`ccr-...`). Keep it identical to
   `dev` and push both.
+- **`mad-discovery` has its own agent.** Do not change that repository from a
+  Fortoid session. When the wallet needs something there, log a bead with the
+  label `for-mad-discovery-agent` (assignee `mad-discovery agent`) that says
+  what is asked and why, and tell the owner its id. That agent tracks its work
+  in the owner's private workspace (`bd` from `~/code/bpm`, label
+  `mad-discovery`), which a Fortoid session cannot reach; it can read these
+  beads in `.beads/issues.jsonl` on `dev`. `git pull --ff-only` before reading
+  that repository. (Owner, 2026-11-12.)
 - Current focus is a proof-of-concept demo for the KERI Foundation; signed
   release builds are out of scope for now.
 - **KERI-only identity.** Everything the owner builds uses KERI for identity,
