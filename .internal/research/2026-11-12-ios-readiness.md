@@ -34,8 +34,9 @@ the phone features after the first browser demonstration.
 - That commit is not an ancestor of FortWeb `main`; `main` (`a82bcb2`) has five
   later commits: #33, #38 (Python 3.14 / Pyodide 314), #39, #40 (runtime
   publisher), #41 (mobile accessibility). [S3]
-- Fortoid and our wallet fork build against FortWeb `main` plus 17 fork commits
-  and the newer runtime source `runtime-source-pyodide-314-hio-0.7.20-20260910`.
+- Fortoid and our wallet fork build against FortWeb `main` plus our fork's
+  commits and the newer runtime source
+  `runtime-source-pyodide-314-hio-0.7.20-20260910`.
   [S4]
 - Since the 2026-09-09 switch to the canonical runtime package, iOS upstream has
   had CI, release-gate and docs commits only. [S1]
@@ -112,8 +113,9 @@ with their Apple ID; there is no equivalent of handing over an APK.
 ## Recommendations
 
 1. **Now, cheap:** fast-forward the iOS fork to upstream `main`.
-2. **Now, cheap:** health check. In the synced fork, point the iOS build at
-   `seriouscoderone/fortweb` `main` and the newer runtime source, and run the
+2. **Now, cheap:** health check. On the synced fork's `dev` branch, point the
+   iOS build at `seriouscoderone/fortweb` `dev` and the newer runtime source,
+   and run the
    existing `swift-tests` job. Green means the shell runs today's wallet. Red
    shows the size of the gap before any feature work.
 3. **After the first browser demonstration:** port the phone features. Add the
