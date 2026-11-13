@@ -15,12 +15,12 @@
 - KERI-only identity. Nothing here adds a login of any kind.
 - Nothing fetched from a source is executed, rendered as markup, or turned into a link. Render with `escapeHtml` (`app/shared/dom.ts`) or `textContent`.
 - Address rules (from `mad-discovery` `src/address.ts`): https only, at most 512 characters, no user name, password, query, fragment or port, no IP literal, no `localhost` or `*.localhost`, host not ending in `.`, path ends `/source.json`. The wallet is stricter in two ways, because it hands the address to the browser's fetch and cannot check what a name resolves to: a host needs at least two labels and a last label that starts with a letter (this refuses every shorthand a browser would read as an IP address, such as `2130706433` or `127.1`), and a path may hold only letters, digits, `.`, `_`, `~`, `-` and `/`, with no empty, `.` or `..` segment.
-- Limits (from `mad-discovery` `src/limits.ts`): one file at most 1,000,000 bytes; one request 10,000 ms; at most 50 definitions per read; one read 60,000 ms; JSON nesting at most 64; publication name 200, description 2000, at most 32 tags of 64, collection 200 characters, no C0/C1 control characters. Wallet-only limits added in review: at most 4,000,000 bytes per read over the source document and all definitions (a publication cut by it gets `problem: "limit"`), and 3,000 ms for the probe that tells "not readable" from "unreachable".
-- Text rules added in the Task 6 review. JSON whose strings (member names or values) include a lone surrogate is refused wherever the wallet parses a source document or a definition: such text cannot be stored or sent as UTF-8. `mad-discovery` accepts it, so this is a third way the wallet is stricter. A string taken from a definition for display (`role`, `alias`, `name`, `as`) is used only if it is at most 200 UTF-16 units and has no C0/C1 control character; otherwise it is treated as a member of the wrong type.
+- Limits (from `mad-discovery` `src/limits.ts`): one file at most 1,000,000 bytes; one request 10,000 ms; at most 50 definitions per read; one read 60,000 ms; JSON nesting at most 64; publication name 200, description 2000, at most 32 tags of 64, collection 200 characters, no C0/C1 control characters. Wallet-only limits added in review: at most 4,000,000 bytes per read over the source document and all definitions (a publication cut by it gets `problem: "limit"`). Added by the whole-feature review: the first 50 publications of a source are read and the rest counted; each definition is parsed once per read; a read's answer holds at most 5,000 items; a role is kept only with at most 200 items in its responsibilities and 200,000 bytes of definitions. (The 3,000 ms probe is gone: see "Fixes before the pin".)
+- Text rules added in the Task 6 review. JSON whose strings (member names or values) include a lone surrogate is refused wherever the wallet parses a source document or a definition: such text cannot be stored or sent as UTF-8. `mad-discovery` accepts it, so this is a third way the wallet is stricter. A string taken from a definition for display (`role`, `alias`, `name`, `as`) is used only if it is at most 200 UTF-16 units and has no C0/C1 control character; otherwise it is treated as a member of the wrong type. Added by the whole-feature review: no string shown to the person may hold a format character (Unicode category Cf), and a role needs a name that shows. `mad-discovery` Ruling 12 (2026-11-12) now refuses a lone surrogate in a publication's strings too; inside a definition only the wallet refuses it.
 - A read never holds the worker's request lock (it touches no vault), reads may overlap, and the newest read's result is the one kept for taking on a role.
-- Known limitation: a source whose `/source.json` redirects is told "<host> does not allow wallets to read it yet", because the read refuses redirects and the probe then succeeds.
+- Known limitation: a source whose `/source.json` answers with a redirect is told "Could not read <host>: it cannot be reached, or it does not allow wallets to read it yet". The read refuses redirects, and a browser does not say why a read failed. (Until the whole-feature review a second, no-cors request tried to tell the two cases apart; it followed redirects to other hosts and was removed.)
 - SAID pattern `^E[A-P][A-Za-z0-9_-]{42}$`; fill is 44 `#`.
-- Fetch options: `mode: "cors"`, `credentials: "omit"`, `redirect: "error"`, `referrerPolicy: "no-referrer"`, `cache: "no-store"`; status 200; content type starts with `application/json`.
+- Fetch options: `mode: "cors"`, `credentials: "omit"`, `redirect: "error"`, `referrerPolicy: "no-referrer"`, `cache: "no-store"`; status 200; content type `application/json` or a type ending `+json`, parameters ignored (`mad-discovery`'s `isJsonType`; a prefix test until the whole-feature review). No other request is made.
 - Exact user-facing strings are in the spec's table "What the person sees when something is wrong"; the warning text is `Not appointed yet`.
 - Start-up UI stays still (see Fortoid `CLAUDE.md`): no animation or timer-driven redraw on the Roles page.
 - Build and test commands are in Fortoid `CLAUDE.md` ("Working on the wallet"). Rebuild with `npm run build:runtime` after every `app/` change. Browser tests: `npx playwright test <spec> -c playwright.local.config.ts --trace off`.
@@ -479,6 +479,22 @@ git push origin dev
 
 ---
 
+### Fixes before the pin (whole-feature review, 2026-11-13)
+
+The review of the whole feature (`38d50ea..ca8b869`) answered "not ready": two security-level problems and several smaller ones. They are fixed in FortWeb before Task 7 pins a commit. Bead: `fortoid-7ji.4`; the held-Enter bug `fortoid-7ji.3` is fixed in the same round. What was decided:
+
+- **No second request (C1, I1).** The no-cors probe is removed. It followed redirects, so a source could send the wallet's requests to hosts the person never typed, and under the shell's `Cross-Origin-Embedder-Policy: require-corp` it could not do its job anyway. Every request the wallet makes for a read is a `cors` request that refuses redirects, to the typed source's own files. A read that is not answered in time says "Could not reach <host>."; any other failure to get the source document says "Could not read <host>: it cannot be reached, or it does not allow wallets to read it yet."
+- **A read's cost is bounded (C2).** The first 50 valid publications are read, the rest are counted and the page says how many are not shown. Each definition is parsed once per read. A publication's closure is not followed past the 50 definitions a read may fetch. The answer holds at most 5,000 items; a publication whose roles do not fit gets `problem: "limit"`. The 60 s clock is checked for every publication, and the read lets other requests in between publications.
+- **My roles does not depend on stored definitions (C2).** A role's record keeps its responsibilities as they were read; `roles.list` reads records only. A role is kept only if its responsibilities have at most 200 items and its definitions at most 200,000 bytes together; otherwise `roles.takeOn` answers `BAD_RESPONSE` "<host> publishes more than the wallet keeps for one role." and writes nothing.
+- **Addresses (I2).** An address or an `oobi` that the URL parser rejects is "That is not an address the wallet can open." and a dropped entry, never "Runtime request failed.".
+- **Text and layout (I3).** No format character (Unicode category Cf) in any string shown; a role's name must show. Under My roles the host has a line of its own before the publication's name. The name offered for a new identifier is the role's name with its white space tidied.
+- **A definition that cannot be read is not a mismatch (I4).** `problem: "unreadable"`, "A definition from <host> could not be read.", for a definition that is not served, too slow, too large or not JSON, and for a target the source does not serve. `"mismatch"` is kept for bytes that fail their SAID check.
+- **Content type (I5).** `mad-discovery`'s rule.
+- **Smaller.** A persist that fails answers "The wallet could not keep that role." and the role's data is taken out of memory again; a failed refresh after a stored take-on is not shown as a failed take-on; `roles.remove` that fails answers "The wallet could not remove that role."; a roles store that cannot be read refuses a take-on with the fixed sentence.
+- **Not done here, tracked:** a browser test against a real local HTTPS server (`fortoid-7ji.5`); a shared text rule with `mad-discovery` for characters that reverse text or do not show, and three smaller notes for that project (issues on its repository).
+
+---
+
 ### Task 7: Ship to the phone
 
 **Files (Fortoid):**
@@ -488,7 +504,7 @@ git push origin dev
 **Acceptance Criteria:**
 - Canonical package built from the pinned commit and imported; `./gradlew :app:assembleDebug :app:testDebugUnitTest` and `scripts/test-sync-contract.sh` pass locally.
 - Every workflow on Fortoid `dev` is green for the pin commit, the Startup Proof included.
-- The owner is told how to try it: install the APK, open the wallet, type the address. With Task 1 still held, the live source answers "mad.seriouscoder.one does not allow wallets to read it yet", which is the expected result until the header is added.
+- The owner is told how to try it: install the APK, open the wallet, type the address. Both deployed sources have sent the header since 2026-11-13 (checked with an `Origin` header), so `mad.seriouscoder.one` is expected to show its three publications on the phone.
 
 - [ ] **Step 1:** Pin, build and import the package, assemble, run the JVM and contract tests.
 - [ ] **Step 2:** Docs. Commit, push to `dev` and the session branch.
@@ -502,7 +518,7 @@ git push origin dev
 |---|---|
 | D1 header in `mad-discovery`, deploy note | 1 (held for the owner's yes) |
 | Address, document and SAID rules; limits | 2, 3, 4 |
-| Fetch rules; "does not allow wallets" vs "could not reach" | 4 |
+| Fetch rules; one sentence when a browser cannot say why a read failed | 4, fixes before the pin |
 | Role derivation in one function | 3 |
 | Roles page as landing; publications and roles; plain text only | 5 |
 | D3 identifier chooser | 6 |

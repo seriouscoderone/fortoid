@@ -3,7 +3,11 @@
 > **Date:** 2026-11-12
 > **Bead:** fortoid-bx6
 > **Status:** approved by the owner on 2026-11-12 with one change (D3). The owner
-> also said yes to the header (D1) the same day.
+> also said yes to the header (D1) the same day. The header has been live on
+> both deployed sources since 2026-11-13. Changed after the whole-feature
+> review of 2026-11-13: one sentence where a browser cannot tell an unreachable
+> host from one that does not allow the read, limits on what a read and a role
+> may cost, a stricter text rule, and My roles read from the records alone.
 
 ## Goal
 
@@ -128,12 +132,36 @@ stay in the menu.
   definitions per source; one read 60 s; JSON nesting at most 64; and, for the
   wallet only, at most 4,000,000 bytes per read in total, so a hostile source
   cannot exhaust a phone's memory.
+- Limits on what a read costs, for the wallet only (added after the
+  whole-feature review, which showed a source inside every limit above freezing
+  the wallet): the first 50 publications of a source are read and the rest are
+  counted; each definition is parsed once per read; a read's answer holds at
+  most 5,000 items (roles, responsibilities and what they refer to), and a
+  publication whose roles do not fit gets the "more than the wallet reads"
+  sentence; the read checks its 60 s and lets other requests in between
+  publications.
 - Fetch rules: https only, no credentials, no referrer, redirects refused, no
-  cache, status 200 with a JSON content type, body read under the byte limit.
+  cache, status 200 with a JSON content type (`application/json` or a type
+  ending `+json`, as in `mad-discovery`), body read under the byte limit. The
+  wallet makes no other request: when a read fails it does not ask again in
+  another way to find out why, because such a request cannot refuse redirects
+  and would let a source send the wallet to other hosts.
 - Text rules, for the wallet only: JSON whose strings include a lone surrogate
-  is refused, because such text cannot be stored or sent as UTF-8; and a name
-  taken from a definition for display (role, alias, name) is used only if it is
-  at most 200 characters with no control characters.
+  is refused, because such text cannot be stored or sent as UTF-8
+  (`mad-discovery` Ruling 12 now refuses it in a publication's strings too; the
+  wallet also refuses it inside a definition). A string shown to the person (a
+  publication's name, description, tags and collection; a role, alias or name
+  from a definition) is used only if it has no control character and no
+  format character (Unicode category Cf: the characters that reverse the
+  direction of text or do not show), and a name from a definition only if it is
+  at most 200 characters; a role needs a name that shows. This is strict on
+  purpose until a shared rule is decided with `mad-discovery`.
+- Other differences from `mad-discovery`, none of them a loosening: a host is
+  ASCII letters, digits and hyphens (a name in its own script, or with `_`, is
+  refused); bytes that are not valid UTF-8 are refused; a number of more than
+  4,300 digits refuses the file; introductions and catalogs are counted as
+  listed, without checking each entry; and a browser asks for and undoes
+  transfer encodings, so the bytes checked are the decoded ones.
 
 Interpreting definitions is kept in one function, `roles_of_selection`, because
 the format (`kind`, `rrs`, `role`, `rely_on`, `attest`, `outcome`) is a
@@ -144,10 +172,14 @@ members are ignored.
 `roling.py`, the roles a vault has taken on:
 
 - Stored in the vault's own database, next to its KELs: one record per role
-  (source address, publication target and name, role, responsibility SAIDs,
-  identifier, when taken on) and the served bytes of each definition by SAID.
+  (source address, publication target and name, role, its responsibilities as
+  they were read, identifier, when taken on) and the served bytes of each
+  definition by SAID.
 - Taking on a role reads nothing from the network: it stores what was just read
   and checked.
+- My roles is read from the records alone, so showing it never depends on how
+  large the stored definitions are. A role is kept only if it is small enough:
+  at most 200 items in its responsibilities and 200,000 bytes of definitions.
 
 Runtime methods: `sources.read`, `roles.list`, `roles.takeOn`, `roles.remove`.
 
@@ -159,6 +191,11 @@ Runtime methods: `sources.read`, `roles.list`, `roles.takeOn`, `roles.remove`.
   identifier).
 - Everything that comes from a source is shown as plain text. Nothing from a
   source becomes markup or a link.
+- The host is never on the same line as text from a source: under My roles it
+  has a line of its own, before the publication's name, so wording or
+  characters in a name cannot hide or imitate it.
+- In the take-on dialog only a fresh press of Enter takes on a role; a key
+  that is being held does not.
 
 ### Fortoid
 
@@ -169,20 +206,26 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
 | Situation | Message |
 |---|---|
 | Address is not a valid source address | "That is not an address the wallet can open." |
-| Host unreachable or too slow | "Could not reach <host>." |
-| Source does not allow browsers to read it | "<host> does not allow wallets to read it yet." |
+| Host does not answer in time | "Could not reach <host>." |
+| Host cannot be reached, or does not allow browsers to read it (a browser does not say which) | "Could not read <host>: it cannot be reached, or it does not allow wallets to read it yet." |
 | Source document invalid | "<host> did not return a valid source." |
 | A definition fails its SAID check | The publication is refused: "A definition from <host> does not match its identifier." |
+| A definition cannot be read (not served, too slow, too large, not JSON) | The publication is refused: "A definition from <host> could not be read." |
 | A limit is exceeded | "<host> publishes more than the wallet reads in one go." |
+| A source lists more than 50 publications | The first 50 are shown, with "<n> more publications are not shown: <host> publishes more than the wallet reads in one go." |
+| A role is too large to keep | "<host> publishes more than the wallet keeps for one role." |
 | Identifier name already used | A numbered name is offered. |
 | A role cannot be stored | "The wallet could not keep that role." Nothing is changed, and no identifier is made. |
 | My roles cannot be read | "My roles could not be read." The address box still works. |
+| A role cannot be removed | "The wallet could not remove that role." |
 
 ## Privacy and security
 
-- Reading a source contacts its host, as visiting a website does. The host
-  learns the phone's network address and the time. No identifier, credential or
-  referrer is sent.
+- Reading a source contacts its host, and only its host, as visiting a website
+  does. The host learns the phone's network address and the time, and what any
+  browser request carries: the wallet's origin, the browser's name and version,
+  and the preferred languages. No identifier, credential, cookie or referrer is
+  sent.
 - Taking on a role and viewing My roles send nothing.
 - A source is an unsigned offering. The host name is shown prominently, because
   the domain is the authority. If a source states who runs it (`by`, `oobi`),
@@ -190,7 +233,8 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
 - Nothing fetched is executed or rendered as markup, and every list and file has
   a limit.
 - A host that has not opted in with the header cannot be read by the wallet,
-  which also keeps it from being pointed at private network hosts.
+  which also keeps it from being pointed at private network hosts. The wallet
+  follows no redirect and makes no request that could follow one.
 
 ## Testing
 
@@ -228,6 +272,11 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
   ride-hailing service, where a person can be a customer or a provider; a
   network-marketing company, with many kinds of actor.
 - Verifying who runs a source through its OOBI.
+- A browser test that reads from a real local HTTPS server, because a routed
+  stand-in cannot show what a browser does with redirects and cross-origin
+  rules.
+- A shared rule with `mad-discovery` for characters that reverse text or do not
+  show, replacing the wallet's strict one.
 - Following introductions and catalogs.
 - Performing a responsibility and exchanging with other actors.
 - iOS, which first needs the Foundation's shell to allow the wallet network
