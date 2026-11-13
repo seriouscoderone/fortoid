@@ -152,10 +152,15 @@ stay in the menu.
   wallet also refuses it inside a definition). A string shown to the person (a
   publication's name, description, tags and collection; a role, alias or name
   from a definition) is used only if it has no control character and no
-  format character (Unicode category Cf: the characters that reverse the
-  direction of text or do not show), and a name from a definition only if it is
-  at most 200 characters; a role needs a name that shows. This is strict on
-  purpose until a shared rule is decided with `mad-discovery`.
+  character that reverses the direction of text or does not show, and a name
+  from a definition only if it is at most 200 characters; a role needs a name
+  that shows. Which characters those are is `mad-discovery`'s Ruling 13 (the
+  owner, 2026-11-12): the bidirectional controls, the zero-width space, the
+  word joiner and its neighbours, the byte-order mark, the soft hyphen, the
+  Mongolian vowel separator and the tag characters. The joiners that emoji
+  sequences and Persian need are allowed. `mad-discovery` applies the rule to a
+  publication's strings; the wallet applies the same rule there and to the
+  names it takes from a definition.
 - Other differences from `mad-discovery`, none of them a loosening: a host is
   ASCII letters, digits and hyphens (a name in its own script, or with `_`, is
   refused); bytes that are not valid UTF-8 are refused; a number of more than
@@ -275,8 +280,6 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
 - A browser test that reads from a real local HTTPS server, because a routed
   stand-in cannot show what a browser does with redirects and cross-origin
   rules.
-- A shared rule with `mad-discovery` for characters that reverse text or do not
-  show, replacing the wallet's strict one.
 - Following introductions and catalogs.
 - Performing a responsibility and exchanging with other actors.
 - iOS, which first needs the Foundation's shell to allow the wallet network
