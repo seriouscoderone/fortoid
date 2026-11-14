@@ -9,7 +9,10 @@
 > host from one that does not allow the read, limits on what a read and a role
 > may cost, a stricter text rule, and My roles read from the records alone.
 > Built and shipped in the `demo-latest` APK on 2026-11-14 (wallet commit
-> `1555227`); the text below describes what was built.
+> `1555227`); the text below describes what was built. Shown on the owner's
+> phone the same day: the wallet read `mad.seriouscoder.one` and a role was
+> taken on, once the sources' hosting sent the header to a request without
+> cache too.
 
 ## Goal
 
