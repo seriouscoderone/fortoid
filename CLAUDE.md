@@ -28,6 +28,14 @@ Upstream remote: `https://github.com/keri-foundation/fortoid.git`.
   label `for-mad-discovery-agent` and the issue as its external reference
   (`gh-<number>`), and tell the owner both. `git pull --ff-only` before reading
   that repository. (Owner, 2026-11-12 and 2026-11-13.)
+- **The MAD designer (`seriouscoderone/mad`, private) is not changed from a
+  Fortoid session either.** The owner allows issues there (2026-11-14): attach
+  it with `add_repo` (push access, which filing an issue needs), say what the
+  wallet needs and why, and mirror each issue here as a bead labelled
+  `for-mad-agent` with the external reference `gh-mad-<number>`. That
+  repository is private and this one is public: nothing from its documents or
+  code goes into the beads, specs, plans or notes here. State the wallet's need
+  in the wallet's own words.
 - Current focus is a proof-of-concept demo for the KERI Foundation; signed
   release builds are out of scope for now.
 - **KERI-only identity.** Everything the owner builds uses KERI for identity,
