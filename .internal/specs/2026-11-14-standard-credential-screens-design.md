@@ -4,8 +4,9 @@
 > **Bead:** fortoid-xn7
 > **Status:** presented to the owner in four parts on 2026-11-14 and approved in
 > conversation the same day, with two additions the owner raised afterwards (a
-> Types page, and the computer's wallet as a plain download). This document
-> awaits the owner's review.
+> Schemas page, and the computer's wallet as a plain download). At the review
+> the owner asked that a credential's type be called what it is, an ACDC
+> schema, and this text does. This document awaits the owner's review.
 
 ## Goal
 
@@ -15,7 +16,7 @@ issue. The other reviews it and adds it or declines it. The sender sees the
 answer.
 
 Every screen is a standard wallet screen. The published definitions supply the
-credential types and the forms. This is the owner's universal UI: an
+credential schemas and the forms. This is the owner's universal UI: an
 application with no workbench of its own is carried out with the wallet's
 standard features.
 
@@ -41,14 +42,15 @@ appoints someone to a role.
    drawn from the published definition: valid from, valid until, place. *Send
    credential* shows a cycling code.
 5. **Review.** On the phone, *Receive* scans the cycling code and shows its
-   progress ("7 of 14"). *Review credential* then says who it is from, what
-   type it is and which organization publishes that type, the values, and what
-   was checked. The buttons are *Close*, *Decline* and *Add credential*.
+   progress ("7 of 14"). *Review credential* then says who it is from, which
+   schema it follows and which organization publishes that schema, the values,
+   and what was checked. The buttons are *Close*, *Decline* and *Add credential*.
 6. **Answer.** After *Add credential* or *Decline* the phone shows the answer as
    a code. The computer scans it, and its Activity list says *Accepted* or
    *Declined*.
-7. **Lists.** A **Credentials** page has Received, Issued, Activity and Types.
-   Types lists credential types by organization and publication.
+7. **Lists.** A **Credentials** page has Received, Issued, Activity and
+   Schemas. Schemas lists the vault's ACDC schemas by organization and
+   publication.
 8. **What does not change yet.** A role card cannot say "appointed". It says
    that the organization does not define yet what appoints someone to the role.
 
@@ -57,7 +59,7 @@ appoints someone to a role.
 - A grant may arrive unsolicited, and the receiver admits it or spurns it.
   There is no self-issued grant as a step (2026-11-14).
 - Universal UI: build and improve the wallet's standard screens, with the
-  definitions supplying types and forms. Custom UIs come later, as wallet
+  definitions supplying schemas and forms. Custom UIs come later, as wallet
   plugins (2026-11-14).
 - Build on the Foundation's draft credential engine; do not write a second one
   (2026-11-14).
@@ -69,7 +71,8 @@ appoints someone to a role.
 - The demonstration is on a phone and a computer. The computer runs the same
   wallet in a regular desktop browser, from a download (2026-11-14).
 - The schemas page has to show and use many schemas from several sources and
-  industries (2026-11-14).
+  industries. What a credential's type is, is its ACDC schema: there is no
+  separate page or notion of types (2026-11-14).
 - The test wallet data on the phone may be lost (2026-11-14).
 - Issuance follows the published definitions. Each node keeps its own data.
   Applications first. KERI only (2026-11-11 and 2026-11-12).
@@ -110,11 +113,11 @@ shows it. The vault's credential store gets it only on *Add credential*.
 is how the Foundation's Locksmith behaves, and it differs from the draft, which
 stores on receipt.
 
-**D7. Types are derived in the wallet, by a fixed rule.** The published gym
-definitions describe a credential's data with a small schema. The KERI library
-needs a complete credential schema that carries its own SAID. The wallet builds
-one from the other by a written rule, `fort-derive/1`, so nothing has to change
-on the publishing side for this version. The rule is offered to the MAD side as
+**D7. ACDC schemas are derived in the wallet, by a fixed rule.** The published
+gym definitions describe a credential's attributes with a small schema. The
+KERI library needs a complete ACDC schema that carries its own SAID. The wallet
+builds one from the other by a written rule, `fort-derive/1`, so nothing has to
+change on the publishing side for this version. The rule is offered to the MAD side as
 a proposal for what its publish step should produce, and is replaced when MAD
 publishes its own form.
 
@@ -127,7 +130,7 @@ shown on the issue form as text for the person to judge. The wallet does not
 link or check them in this version.
 
 **D10. Plain words on the screen.** *Identifier*, *contact*, *credential*,
-*type*, *Send credential*, *Add credential*, *Decline*. The words IPEX, AID,
+*schema*, *Send credential*, *Add credential*, *Decline*. The words IPEX, AID,
 grant, admit and spurn do not appear. The buttons are the Foundation's
 Locksmith's.
 
@@ -143,7 +146,7 @@ signing. A public address with the browser's "install as app" is the cheaper
 way to "it just opens", later.
 
 **D13. Three steps, three plans.** Each ends with a build the owner can try:
-the base, hand-over with contacts, then types and credentials.
+the base, hand-over with contacts, then schemas and credentials.
 
 ## Architecture
 
@@ -177,7 +180,7 @@ One format for everything that is handed over. A message is a JSON object:
 | `kind` | `identifier`, `credential` or `answer`. |
 | `cesr` | The signed bytes as base64, exactly as the engine returns them. |
 | `evidence` | `credential` only: the proof the receiver needs, as the engine returns it. |
-| `schema` | `credential` only: the type's schema as text, so the receiver need not have read the source. |
+| `schema` | `credential` only: the credential's ACDC schema as text, so the receiver need not have read the source. |
 | `name` | `identifier` only, optional: the name the sender suggests for itself, at most 64 characters. |
 
 A message is at most 48,000 bytes when packed. **Packed** means one marker byte
@@ -239,14 +242,18 @@ One reader, *Receive*, with two ways in: scan or paste.
 The joined bytes are unpacked and handed to the engine. Nothing from a message
 is shown before the engine has checked it.
 
-### Credential types
+### Schemas
+
+A credential's type is its ACDC schema. The wallet has one notion and one page
+for it, as the Foundation's Locksmith has.
 
 The published gym definitions that carry data are of kind `fact` and
-`authorization`. Each has an `alias` and a `schema` that describes an object.
-A responsibility names the facts it attests and the authorizations it issues.
+`authorization`. Each has an `alias` and a `schema` that describes the
+credential's attributes only. A responsibility names the facts it attests and
+the authorizations it issues.
 
 **Rule `fort-derive/1`.** From one such definition the wallet builds a complete
-credential schema:
+ACDC schema:
 
 - The envelope is the one the draft's own test schema describes
   (`playwright/fixtures/default-acdc-schema.json` in the draft), narrowed so
@@ -256,7 +263,7 @@ credential schema:
   allowed.
 - A property that refers to another served document by SAID is replaced by that
   document's content, without its own identifier, to a depth of four. A cycle
-  or a missing document makes the definition unusable as a type.
+  or a missing document means no schema can be made from the definition.
 - The title is the definition's `alias`.
 - An annotation names the rule and the definition's SAID.
 - The schema's own SAID is computed as the KERI library computes it and stored
@@ -266,17 +273,23 @@ The exact text is fixed by tests: the derived schema of every fixture
 definition is kept byte for byte, and a browser test shows the engine accepting
 each one.
 
-**Where a type comes from.** Taking on a role keeps the role's definitions, as
-it does today. It now also keeps what their schemas refer to, and the
-publication's description, tags and collection. Each fact or authorization the
-role may issue becomes a type in the vault's schema store.
+**Where a schema comes from.** Taking on a role keeps the role's definitions,
+as it does today. It now also keeps what their attribute schemas refer to, and
+the publication's description, tags and collection. For each fact or
+authorization the role may issue, the derived ACDC schema goes into the vault's
+schema store, which is the KERI library's own.
 
-**A type that arrives with a credential.** The message carries the schema. The
-wallet checks it against its SAID. If the wallet holds the definition the
-annotation names, and deriving from it gives the same SAID, the type is shown
+**A schema that arrives with a credential.** The message carries the schema.
+The wallet checks it against its SAID. If the wallet holds the definition the
+annotation names, and deriving from it gives the same SAID, the schema is shown
 as published by that organization, in that publication. Otherwise it is shown
-as a type no organization the person has opened publishes. A claim in the
+as a schema no organization the person has opened publishes. A claim in the
 schema alone proves nothing.
+
+**Schemas from elsewhere.** The schema store holds any ACDC schema, whatever
+made it. In this version schemas enter it in the two ways above. Adding one
+from a file or an address, as the Foundation's Locksmith does, is a later
+slice.
 
 ### The engine (Python, in the worker)
 
@@ -294,8 +307,8 @@ engine and change as little of it as possible.
 | `handover.identifier` | Makes the message for one of the vault's identifiers. |
 | `handover.read` | Checks a message and says what it is. For a credential it returns what the review shows and keeps the message as pending. For an answer it records the answer if it matches a credential this vault sent. |
 | `handover.addContact` | Adds the identifier in a message as a contact under a name. |
-| `types.list` | The types the vault knows, with organization, publication, tags and collection, the role that may issue each, and what each carries. |
-| `credentials.send` | Issues a credential of a type a taken-on role may issue, to a contact, and returns the message to hand over. Repeating it with the same request id issues nothing twice. |
+| `schemas.list` | The schemas in the vault's schema store, each with its organization, publication, tags and collection where a kept definition gives them, the role that may issue under it, and the attributes it describes. It sits beside the draft's `schemas.import` and `schemas.get`. |
+| `credentials.send` | Issues a credential under a schema a taken-on role may issue under, to a contact, and returns the message to hand over. Repeating it with the same request id issues nothing twice. |
 | `credentials.listIssued`, `credentials.listReceived` | The two lists. |
 | `grants.accept` | Stores a pending credential and returns the answer message. |
 | `grants.decline` | Builds the refusal, forgets the pending credential and returns the answer message. |
@@ -310,7 +323,7 @@ engine and change as little of it as possible.
 - **What is stored.** Pending messages and the Activity records go into two new
   sub-databases, encrypted with the vault's keys as the draft encrypts received
   credentials. An Activity record holds the exchange's identifier, the other
-  party, the type's title, the state, the times, and the message this vault
+  party, the schema's title, the state, the times, and the message this vault
   produced (a credential it sent, or an answer it gave), so that it can be
   shown again. For a declined credential that message is the refusal, which
   holds no values.
@@ -335,7 +348,7 @@ engine and change as little of it as possible.
   (Available, Pending, Active, Revoked) come with the appointment itself, in a
   later slice.
 - **Issue.** The issuer is the identifier the role was taken on with. The
-  recipient is chosen from contacts. A form drawn from the type. Beneath it, as
+  recipient is chosen from contacts. A form drawn from the schema. Beneath it, as
   text, what the responsibility relies on and its rules. *Send credential*
   opens Show.
 - **The form.** Text, text with a choice of values, number, whole number, yes
@@ -344,13 +357,16 @@ engine and change as little of it as possible.
   error naming it. If that field is required, the credential cannot be issued
   and the form says so.
 - **Review credential.** From: the contact's name, or "an identifier that is
-  not in your contacts" with its prefix. The type, and who publishes it. The
+  not in your contacts" with its prefix. The schema, and who publishes it. The
   values. What was checked. *Close*, *Decline*, *Add credential*. Closing
   leaves it in Activity as *Awaiting your decision*.
-- **Credentials page.** Received, Issued, Activity, Types. Types is grouped by
-  organization, then publication, with the publication's tags and collection,
-  and has a search box. A type that came with a credential and is published by
-  no organization the person has opened is in its own group.
+- **Credentials page.** Received, Issued, Activity, Schemas, the four entries
+  the Foundation's Locksmith has under Credentials.
+- **Schemas.** The vault's ACDC schemas, grouped by organization, then
+  publication, with the publication's tags and collection, and a search box. A
+  schema shows its title, its SAID, the attributes it describes and the role
+  that may issue under it. A schema that came with a credential and is
+  published by no organization the person has opened is in its own group.
 - **Experimental.** The word appears on the Credentials page, the issue form
   and the review.
 
@@ -400,8 +416,8 @@ engine and change as little of it as possible.
 | It was declined before | "You declined this credential on (date)." |
 | An answer matches nothing this vault sent | "This answer does not match a credential you sent." |
 | The vault has no passcode | "This vault has no passcode, so it cannot hold credentials." |
-| A required field cannot be drawn | "This type has a field the wallet cannot show yet: (name). It cannot be issued from this wallet." |
-| A definition cannot become a type | "The wallet cannot use this definition as a credential type yet." |
+| A required field cannot be drawn | "This schema has a field the wallet cannot show yet: (name). A credential cannot be issued under it from this wallet." |
+| No schema can be made from a definition | "The wallet cannot make a credential schema from this definition yet." |
 | Issuing failed | "The credential was not issued." |
 
 ## Privacy and security
@@ -417,11 +433,12 @@ engine and change as little of it as possible.
   name for itself as if it were known. It shows the contact's name the person
   gave, or the identifier's prefix.
 - **"Published by" is checked, not claimed.** It is shown only when the wallet
-  derives the same type from a definition it read and kept itself.
+  derives the same schema from a definition it read and kept itself.
 - **Consent.** Nothing of a credential is stored before *Add credential*. The
   sender learns the answer only when the person shows it.
 - **What a declined credential leaves.** An Activity line with the refusal that
-  was sent, and the type's schema, which is a public document. Not the values.
+  was sent, and the credential's schema, which is a public document. Not the
+  values.
 - **The screen.** A code can be copied by anyone who sees it. The Show dialog
   says so. Hand-over by code is for two people in one place.
 - **Flicker.** At most three frames a second, started by a tap, with a pause
@@ -444,8 +461,8 @@ engine and change as little of it as possible.
 - **Two wallets in the browser.** Playwright with two separate browser
   contexts: contacts both ways; issue, review and add; decline; the answer read
   by the sender; the same message read twice; a message altered in transit; a
-  credential for an identifier in another vault; a type no kept definition
-  matches; a definition that cannot become a type; a form with a field that
+  credential for an identifier in another vault; a schema no kept definition
+  matches; a definition no schema can be made from; a form with a field that
   cannot be drawn.
 - **Codes.** Sizes from one frame up to the limit are drawn and read back. The
   reader's camera path runs against a stream made from a canvas. Cycling,
@@ -473,7 +490,7 @@ Each phase has its own plan and ends with a build the owner can try.
    reader on the computer, `qr.scanSequence` on the phone, *Show* on an
    identifier and *Add by scanning or pasting*. The owner makes the phone and
    the computer contacts of each other.
-3. **Types and credentials.** The rule, the Types page, *Can issue* on a role,
+3. **Schemas and credentials.** The rule, the Schemas page, *Can issue* on a role,
    the issue form, *Review credential* with *Add credential* and *Decline*, the
    answer, Activity and the two lists. The owner sends a credential from one to
    the other and declines a second one.
@@ -502,7 +519,7 @@ proposal once this document is approved.
 ## Later slices (not in this design)
 
 - A role's status from its appointment: Available, Pending, Active, Revoked.
-  The owner's fork has the rule for Active: a credential of the right type,
+  The owner's fork has the rule for Active: a credential under the right schema,
   from a trusted issuer, not withdrawn, fully verified. It also has the rule
   that a credential the person asked for is added without a second question.
 - Asking for a credential, and offers and agreements before one is sent.
@@ -516,6 +533,8 @@ proposal once this document is approved.
 - Frames that tolerate a missed frame.
 - Hand-over that only the receiver can read, for use at a distance.
 - Exchanging files with the Foundation's Locksmith.
+- Adding a schema from a file or an address, as the Foundation's Locksmith
+  does.
 - iOS.
 
 ## Where the patterns come from
