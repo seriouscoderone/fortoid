@@ -90,8 +90,8 @@ document and SAID rules and role derivation; pure Python, opens nothing) and
 `app/runtime/roling.py` (`sources.read` over the browser's fetch, outside the
 worker's request lock; `roles.takeOn`, `roles.list` and `roles.remove` over the
 vault's `frol.` and `fdef.` sub-databases, with no network). Their Python tests
-need Blake3 in the venv: `pip install blake3` (the runtime bundles 1.0.8; the
-tests have run with 1.0.11), then
+need Blake3 in the venv: `pip install blake3` (1.0.8 or later; the runtime
+bundles 1.0.8), then
 `python3 -m unittest python.test_sourcing python.test_roling`. Browser tests
 serve a fixture source at `https://mad.example.test/`
 (`playwright/fixtures/mad-source.ts`, definitions in `python/fixtures/mad/`) and
@@ -100,11 +100,13 @@ live in the `playwright/fortweb-roles*.spec.ts` files, with their helpers in
 `test:e2e:prepared-runtime`: a new spec file runs only once it is added there.
 A spec whose tests take over five minutes prints a "Slow test file" notice (CI
 runs them on one worker), so keep each under about 210 s and split by topic
-before that. A real source is readable only if it sends
-`Access-Control-Allow-Origin: *`; otherwise the wallet says "Could not read
-<host>: it cannot be reached, or it does not allow wallets to read it yet"
-(a browser does not say which, and the wallet makes no second request to find
-out: such a request would follow redirects to other hosts). `route.fulfill`
+before that.
+
+A real source is readable only if it sends `Access-Control-Allow-Origin: *`;
+otherwise the wallet says "Could not read <host>: it cannot be reached, or it
+does not allow wallets to read it yet." A browser does not say which, and the
+wallet makes no second request to find out: such a request would follow
+redirects to other hosts. `route.fulfill`
 in the browser tests cannot show what a browser does with redirects or
 cross-origin rules, so a claim about either needs a real server. The limits
 on what a read and a role may cost, and the sentences the person sees, are in
