@@ -106,7 +106,12 @@ A real source is readable only if it sends `Access-Control-Allow-Origin: *`;
 otherwise the wallet says "Could not read <host>: it cannot be reached, or it
 does not allow wallets to read it yet." A browser does not say which, and the
 wallet makes no second request to find out: such a request would follow
-redirects to other hosts. `route.fulfill`
+redirects to other hosts. The wallet reads with the fetch cache mode
+`no-store`, so the browser adds `Cache-Control: no-cache` and
+`Pragma: no-cache` to every request, and a source must send the header on such
+a request too: CloudFront's managed SimpleCORS policy does not. Check a source
+with `curl -sI -H 'Origin: https://wallet.invalid' -H 'Cache-Control: no-cache'
+-H 'Pragma: no-cache' <address>`, not with `Origin` alone. `route.fulfill`
 in the browser tests cannot show what a browser does with redirects or
 cross-origin rules, so a claim about either needs a real server. The limits
 on what a read and a role may cost, and the sentences the person sees, are in

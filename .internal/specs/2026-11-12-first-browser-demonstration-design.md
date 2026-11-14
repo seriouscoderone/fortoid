@@ -148,6 +148,12 @@ stay in the menu.
   wallet makes no other request: when a read fails it does not ask again in
   another way to find out why, because such a request cannot refuse redirects
   and would let a source send the wallet to other hosts.
+- Because the wallet asks without the browser's cache, the browser adds
+  `Cache-Control: no-cache` and `Pragma: no-cache` to every request. A source
+  has to send the header on such a request too. CloudFront's managed SimpleCORS
+  policy does not: it leaves the header out when a request carries either,
+  which is why the first try on the phone (2026-11-14) could not read the
+  deployed sources although they sent the header to a plain request.
 - Text rules, for the wallet only: JSON whose strings include a lone surrogate
   is refused, because such text cannot be stored or sent as UTF-8
   (`mad-discovery` Ruling 12 now refuses it in a publication's strings too; the
