@@ -83,6 +83,42 @@ Also: `npm run typecheck`, `python3 -m unittest python.test_vaulting`,
 `npm run test:runtime-publication-workflow`. Phone features are tested with a
 fake `window.bridge` (see `playwright/fortweb-*native*`/`fingerprint` specs).
 
+The wallet's landing page is **Roles** (fortweb `app/features/roles/roles-page.ts`):
+it reads a `mad-discovery` source, lists the roles it publishes and lets the
+person take one on. The rules are in fortweb `app/runtime/sourcing.py` (address,
+document and SAID rules and role derivation; pure Python, opens nothing) and
+`app/runtime/roling.py` (`sources.read` over the browser's fetch, outside the
+worker's request lock; `roles.takeOn`, `roles.list` and `roles.remove` over the
+vault's `frol.` and `fdef.` sub-databases, with no network). Their Python tests
+need Blake3 in the venv: `pip install blake3` (the runtime bundles 1.0.8; the
+tests have run with 1.0.11), then
+`python3 -m unittest python.test_sourcing python.test_roling`. Browser tests
+serve a fixture source at `https://mad.example.test/`
+(`playwright/fixtures/mad-source.ts`, definitions in `python/fixtures/mad/`) and
+live in the `playwright/fortweb-roles*.spec.ts` files, with their helpers in
+`playwright/fixtures/roles.ts`. `package.json` names every spec in
+`test:e2e:prepared-runtime`: a new spec file runs only once it is added there.
+A spec whose tests take over five minutes prints a "Slow test file" notice (CI
+runs them on one worker), so keep each under about 210 s and split by topic
+before that. A real source is readable only if it sends
+`Access-Control-Allow-Origin: *`; otherwise the wallet says "Could not read
+<host>: it cannot be reached, or it does not allow wallets to read it yet"
+(a browser does not say which, and the wallet makes no second request to find
+out: such a request would follow redirects to other hosts). `route.fulfill`
+in the browser tests cannot show what a browser does with redirects or
+cross-origin rules, so a claim about either needs a real server. The limits
+on what a read and a role may cost, and the sentences the person sees, are in
+`.internal/specs/2026-11-12-first-browser-demonstration-design.md`. The
+characters refused in a shown string (`FORBIDDEN` in `sourcing.py`) are
+`mad-discovery`'s Ruling 13 and must stay equal to its `src/source.ts`.
+
+On Pyodide a Python function handed to a browser API (`js.setTimeout`, an
+event listener) is a proxy that is destroyed when the call returns: keep it
+alive with `pyodide.ffi.create_proxy` and release it afterwards, or the browser
+calls nothing. The unit tests run on plain CPython with stand-ins for `js`, so
+only a browser test that waits for the callback shows whether it works; the
+roles time-limit tests (`playwright/fortweb-roles-time.spec.ts`) do.
+
 Ship a FortWeb change to the APK: push fortweb `dev`, set its full SHA in
 Fortoid `config/fortweb-runtime.json`, verify locally with
 `scripts/build-canonical-fortweb-package.sh --fortweb-dir /home/user/fortweb`
