@@ -109,11 +109,17 @@ most one more cycle. Fountain-coded frames (Blockchain Commons UR) tolerate a
 missed frame, but their libraries are old or unfinished; they can be added as a
 further carrier if scanning proves slow.
 
-**D6. Nothing is kept before consent.** Reading a credential checks it and
-shows it. The vault's credential store gets it only on *Add credential*.
-*Decline* keeps a line in Activity and nothing of the credential's values. This
-is how the Foundation's Locksmith behaves, and it differs from the draft, which
-stores on receipt.
+**D6. A credential handed over is held the KERI library's way.** The library
+keeps every exchange message it accepts in the vault's own store and links the
+answer to it. The Foundation's draft and its Locksmith hold a received
+credential there, and so does this wallet: it adds no store of its own for one.
+The credential counts as one of the person's credentials only after *Add
+credential*. *Decline* sends the refusal, and the credential is never listed.
+Neither the library nor the draft removes a message once received, so a
+declined one stays in that store, unlisted. A message whose proof is incomplete
+is refused at once: nothing waits for missing parts, because with hand-over
+nothing could bring them. The library's escrow, which holds what is not
+complete yet, comes into play with a mailbox.
 
 **D7. ACDC schemas are derived in the wallet, by a fixed rule.** The published
 gym definitions describe a credential's attributes with a small schema. The
@@ -313,13 +319,13 @@ engine and change as little of it as possible.
 | Method | What it does |
 |---|---|
 | `handover.identifier` | Makes the message for one of the vault's identifiers. |
-| `handover.read` | Checks a message and says what it is. For a credential it returns what the review shows and keeps the message as pending. For an answer it records the answer if it matches a credential this vault sent. |
+| `handover.read` | Checks a message and says what it is, and returns what the screen shows. A credential from a contact is received by the draft's engine, which checks it and holds it as the library holds any message. A credential from anyone else is checked without being held. An answer is recorded if it matches a credential this vault sent. |
 | `handover.addContact` | Adds an identifier as a contact under a name the person gives: from an identifier message, or from the history carried in a credential's proof. A name another contact already has is refused. |
 | `schemas.list` | The schemas in the vault's schema store, each with its organization, publication, tags and collection where a kept definition gives them, the role that may issue under it, and the attributes it describes. It sits beside the draft's `schemas.import` and `schemas.get`. |
 | `credentials.send` | Issues a credential under a schema a taken-on role may issue under, to a contact, and returns the message to hand over. Repeating it with the same request id issues nothing twice. |
 | `credentials.listIssued`, `credentials.listReceived` | The two lists. Issued is read from the engine's own store, so a credential issued just before a failure still appears and can be shown. Received is read from the wallet's own records without checking every credential again. |
-| `grants.accept` | Stores a pending credential and returns the answer message. Accepting again returns the same answer. The sender has to be a contact: the draft's engine keeps a credential only from one. |
-| `grants.decline` | Builds the refusal, forgets the pending credential and returns the answer message. |
+| `grants.accept` | Gives the answer that the credential is taken, which makes it one of the vault's credentials, and returns the answer message. Accepting again returns the same answer. The sender has to be a contact: the draft's engine holds a credential only from one. |
+| `grants.decline` | Builds the refusal, links it to the credential as its answer where the engine holds the credential, and returns the answer message. Declining again returns the same answer. |
 | `grants.message` | Returns a message again: a credential sent earlier, or an answer given earlier. |
 | `activity.list` | Every exchange and its state. |
 
@@ -335,13 +341,15 @@ engine and change as little of it as possible.
   what is tested. An identifier with witnesses has a longer history to hand
   over and needs its witnesses to issue; neither is covered here.
 - **Dates and times** are entered in local time and stored with their offset.
-- **What is stored.** Pending messages and the Activity records go into two new
-  sub-databases, encrypted with the vault's keys as the draft encrypts received
-  credentials. An Activity record holds the exchange's identifier, the other
-  party, the schema's title, the state, the times, and the message this vault
-  produced (a credential it sent, or an answer it gave), so that it can be
-  shown again. For a declined credential that message is the refusal, which
-  holds no values.
+- **What is stored, and where.** Messages and credentials stay in the engine's
+  own stores: the library's exchange store, and the draft's encrypted store of
+  received credentials. Whether a received credential awaits an answer, was
+  added or was declined is read from the library's own link between a message
+  and its answer. The wallet adds one small sub-database, encrypted with the
+  vault's keys as the draft encrypts received credentials. For each exchange it
+  holds the message this vault produced (a credential it sent, or an answer it
+  gave), so that it can be shown again, with the other party, the schema's
+  title and the times, so that the lists need not check every credential again.
 - **States.** *Waiting for (name)*, *Awaiting your decision*, *Accepted*,
   *Declined*.
 - **A vault with no passcode** cannot hold a received credential: the draft
@@ -375,13 +383,16 @@ engine and change as little of it as possible.
   error naming it. If that field is required, the credential cannot be issued
   and the form says so.
 - **Review credential.** From: the contact's name, or "an identifier that is
-  not in your contacts" with its prefix. The schema, and who publishes it. The
-  values. What was checked. *Close*, *Decline*, *Add credential*. Closing
-  leaves it in Activity as *Awaiting your decision*.
+  not in your contacts" with its prefix. The schema, and who publishes it,
+  followed by "(organization) publishes this schema. It does not say who may
+  issue under it, so judge this by who it is from." The values. What was
+  checked. *Close*, *Decline*, *Add credential*. Closing leaves it in Activity
+  as *Awaiting your decision*.
 - **A sender who is not a contact.** The review shows everything, and *Decline*
-  works. *Add credential* first asks the person to name the sender, which makes
-  them a contact from the key history the credential came with. Naming them is
-  the person's own statement of who they take the sender to be.
+  works: the refusal is built from the message, and nothing of the credential
+  is held. *Add credential* first asks the person to name the sender, which
+  makes them a contact from the key history the credential came with. Naming
+  them is the person's own statement of who they take the sender to be.
 - **Credentials page.** Received, Issued, Activity, Schemas, the four entries
   the Foundation's Locksmith has under Credentials.
 - **Schemas.** The vault's ACDC schemas, grouped by organization, then
@@ -477,11 +488,19 @@ engine and change as little of it as possible.
   can start it or receive what it reads.
 - **"Published by" is checked, not claimed.** It is shown only when the wallet
   derives the same schema from a definition it read and kept itself.
-- **Consent.** Nothing of a credential is stored before *Add credential*. The
-  sender learns the answer only when the person shows it.
-- **What a declined credential leaves.** An Activity line with the refusal that
-  was sent, and the credential's schema, which is a public document. Not the
-  values.
+- **The publisher of a schema is not the issuer of a credential.** Anyone who
+  takes on a role can issue under its schemas until the published data says who
+  is appointed. The review says so in one sentence beneath the schema. When
+  appointments exist, that sentence gives way to a checked statement of whether
+  the sender holds one.
+- **Consent.** A credential becomes one of the person's credentials only on
+  *Add credential*. Until then it is a message the vault has received, held as
+  the library holds every message. The sender learns the answer only when the
+  person shows it.
+- **What a declined credential leaves.** From a contact: the received message
+  in the library's store and the draft's encrypted record of it, neither listed
+  among the person's credentials, and the refusal that was sent. From anyone
+  else: the refusal only. Erasing a declined credential is a later slice.
 - **The screen.** A code can be copied by anyone who sees it. The Show dialog
   says so. Hand-over by code is for two people in one place.
 - **Flicker.** At most three frames a second, started by a tap, with a pause
@@ -604,6 +623,7 @@ proposal once this document is approved.
 - A public address for the wallet, with "install as app".
 - Frames that tolerate a missed frame.
 - Hand-over that only the receiver can read, for use at a distance.
+- Erasing a received credential the person declined.
 - Exchanging files with the Foundation's Locksmith.
 - Adding a schema from a file or an address, as the Foundation's Locksmith
   does.
