@@ -1,0 +1,13 @@
+diff --git a/playwright/webbaser-lifecycle.spec.ts b/playwright/webbaser-lifecycle.spec.ts
+index 859c8cc..dcac663 100644
+--- a/playwright/webbaser-lifecycle.spec.ts
++++ b/playwright/webbaser-lifecycle.spec.ts
+@@ -1025,7 +1025,7 @@ test("a user can import a public identifier file into a browser vault", async ({
+     const recipientId = String((recipient.vault as Record<string, unknown>).id);
+     await page.goto(new URL(`/fortweb/app/index.html#/vaults/${encodeURIComponent(recipientId)}/unlock`, baseURL).toString());
+     await page.getByRole("button", { name: "Open", exact: true }).click();
+-    await expect(page.getByRole("heading", { name: "Local Identifiers", exact: true })).toBeVisible();
++    await expect(page.getByRole("heading", { name: "Roles", exact: true, level: 1 })).toBeVisible();
+     await page.evaluate((id) => { window.location.hash = `#/vaults/${encodeURIComponent(id)}/remotes`; }, recipientId);
+     await page.getByRole("button", { name: "Add Remote Identifier" }).click();
+     await page.getByLabel("Alias").fill("imported sender");

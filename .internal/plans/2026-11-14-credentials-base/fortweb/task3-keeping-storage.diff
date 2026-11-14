@@ -1,0 +1,152 @@
+diff --git a/app/app/main.ts b/app/app/main.ts
+index 602642c..980da3b 100644
+--- a/app/app/main.ts
++++ b/app/app/main.ts
+@@ -29,6 +29,7 @@ import { renderSetupPage } from "../features/vaults/setup-page.js";
+ import { installGlobalHandlers } from "../runtime/global-handlers.js";
+ import { fingerprintState } from "../runtime/vault-fingerprint.js";
+ import { METHODS } from "../runtime/method-catalog.js";
++import { askToKeepStorage } from "../runtime/storage-keeping.js";
+ import {
+     readErrorMessage,
+     type KeptRead,
+@@ -391,6 +392,7 @@ actions = {
+     async createVault(name: string, passcode = ""): Promise<VaultRecord> {
+         const currentVaultId = currentState().unlockedVaultId;
+         const { vault } = await bridge.request<{ vault: VaultRecord }>(METHODS.vaultsCreate, { name, passcode });
++        void askToKeepStorage();
+ 
+         if (currentVaultId) {
+             await bridge.request(METHODS.vaultsClose, { vaultId: currentVaultId }).catch(() => {});
+@@ -409,6 +411,7 @@ actions = {
+ 
+     async setUpWallet(name: string, passcode: string): Promise<void> {
+         const { vault } = await bridge.request<{ vault: VaultRecord }>(METHODS.vaultsCreate, { name, passcode });
++        void askToKeepStorage();
+         await actions.refreshVaults(null, null);
+         await actions.openVault(vault.id, passcode);
+         const fingerprint = await fingerprintState(vault);
+diff --git a/app/app/page-factory.ts b/app/app/page-factory.ts
+index 7c77360..ba9e29a 100644
+--- a/app/app/page-factory.ts
++++ b/app/app/page-factory.ts
+@@ -210,6 +210,7 @@ export async function loadPage({
+             page: renderSettingsPage({
+                 vault: assumeType<SettingsPageProps["vault"]>(findVault(route.params.vaultId)),
+                 settings: assumeType<SettingsPageProps["settings"]>(pageData.settings),
++                storageKept: assumeType<SettingsPageProps["storageKept"]>(pageData.storageKept),
+                 onMakeDefault: (vaultId: string) => actions.setDefaultVault(vaultId),
+             }),
+             vault: findVault(route.params.vaultId),
+diff --git a/app/app/page-loader.ts b/app/app/page-loader.ts
+index 0fb215c..973d36e 100644
+--- a/app/app/page-loader.ts
++++ b/app/app/page-loader.ts
+@@ -1,5 +1,7 @@
+ import { type Route } from "./router.js";
+ import { METHODS } from "../runtime/method-catalog.js";
++import { isNativeAvailable } from "../runtime/native-capabilities.js";
++import { storageKept, type StorageKept } from "../runtime/storage-keeping.js";
+ import { postLog } from "../runtime/logger.js";
+ 
+ type RecordValue = Record<string, unknown>;
+@@ -27,6 +29,8 @@ export interface RouteDataResult {
+     /** roles.list failed, not because the vault closed: the page says My roles could not be read. */
+     rolesUnreadable?: boolean;
+     settings?: RecordValue;
++    /** What the browser says about keeping the wallet's storage. Absent inside the phone app, which is no browser. */
++    storageKept?: StorageKept;
+     watcherError?: string;
+     watchers?: RecordValue[];
+     witnessError?: string;
+@@ -80,9 +84,10 @@ export async function loadRouteData({ bridge, route }: RouteDataLoaderContext):
+     }
+ 
+     if (route.name === "settings") {
+-        return bridge.request<{ settings: RecordValue }>(METHODS.settingsGet, {
++        const loaded = await bridge.request<{ settings: RecordValue }>(METHODS.settingsGet, {
+             vaultId: route.params.vaultId,
+         });
++        return isNativeAvailable() ? loaded : { ...loaded, storageKept: await storageKept() };
+     }
+ 
+     if (route.name === "kf-identifiers") {
+diff --git a/app/features/settings/settings-page.ts b/app/features/settings/settings-page.ts
+index 371da78..fe86d10 100644
+--- a/app/features/settings/settings-page.ts
++++ b/app/features/settings/settings-page.ts
+@@ -22,6 +22,8 @@ interface SettingsRecord {
+ interface SettingsPageProps {
+     vault: VaultRecord;
+     settings: SettingsRecord;
++    /** What the browser says about keeping this wallet's storage. Absent inside the phone app and in fixtures. */
++    storageKept?: "kept" | "not-kept" | "unknown";
+     onDeleteVault?(vaultId: string): Promise<void>;
+     /** Makes this the vault that opens when the app starts. */
+     onMakeDefault?(vaultId: string): Promise<void>;
+@@ -31,6 +33,16 @@ function enabledLabel(value: boolean): string {
+     return value ? "Enabled" : "Disabled";
+ }
+ 
++function keptLabel(value: NonNullable<SettingsPageProps["storageKept"]>): string {
++    if (value === "kept") {
++        return "Yes";
++    }
++    if (value === "not-kept") {
++        return "No. The browser may remove this wallet's storage when it runs short of space.";
++    }
++    return "This browser does not say.";
++}
++
+ function detailItem(label: string, value: string): HTMLDivElement {
+     const wrapper = document.createElement("div");
+     wrapper.className = "detail-item";
+@@ -173,7 +185,7 @@ function startupCard(vault: VaultRecord, onMakeDefault: SettingsPageProps["onMak
+     return card;
+ }
+ 
+-export function renderSettingsPage({ vault, settings, onDeleteVault, onMakeDefault }: SettingsPageProps) {
++export function renderSettingsPage({ vault, settings, storageKept, onDeleteVault, onMakeDefault }: SettingsPageProps) {
+     return {
+         title: "Settings",
+         render(container: HTMLElement): void {
+@@ -230,10 +242,11 @@ export function renderSettingsPage({ vault, settings, onDeleteVault, onMakeDefau
+ 
+             const runtimeGrid = document.createElement("dl");
+             runtimeGrid.className = "detail-grid";
+-            runtimeGrid.append(
+-                detailItem("Storage Backend", settings.storageBackend),
+-                detailItem("Runtime Status", settings.runtimeStatus),
+-            );
++            runtimeGrid.append(detailItem("Storage Backend", settings.storageBackend));
++            if (storageKept) {
++                runtimeGrid.append(detailItem("Kept by the Browser", keptLabel(storageKept)));
++            }
++            runtimeGrid.append(detailItem("Runtime Status", settings.runtimeStatus));
+ 
+             runtimeCard.append(runtimeTitle, runtimeGrid);
+             columns.append(startupCard(vault, onMakeDefault), defaultsCard, runtimeCard);
+diff --git a/tsconfig.build.json b/tsconfig.build.json
+index 4035c44..f9c138a 100644
+--- a/tsconfig.build.json
++++ b/tsconfig.build.json
+@@ -10,6 +10,7 @@
+   "include": [
+     "app/runtime/messages.ts",
+     "app/runtime/method-catalog.ts",
++    "app/runtime/storage-keeping.ts",
+     "app/shared/dom.ts",
+     "app/shared/components.ts",
+     "app/app/router.ts",
+diff --git a/tsconfig.json b/tsconfig.json
+index 8ea4c8b..0852904 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -17,6 +17,7 @@
+   "include": [
+     "app/runtime/messages.ts",
+     "app/runtime/method-catalog.ts",
++    "app/runtime/storage-keeping.ts",
+     "app/shared/dom.ts",
+     "app/shared/components.ts",
+     "app/app/router.ts",
