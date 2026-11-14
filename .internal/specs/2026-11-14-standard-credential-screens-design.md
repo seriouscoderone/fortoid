@@ -30,7 +30,7 @@ appoints someone to a role.
    the vault made with the earlier builds is not shown (see D2). The Releases
    page has a second download, the wallet for the computer. Unzipped and
    started with one command, it opens in the computer's browser at
-   `http://127.0.0.1:8765/`.
+   `http://127.0.0.1:8791/`.
 2. **Roles on both.** Each wallet opens `mad.seriouscoder.one` and takes on a
    role, for example *membership* on the computer and *patron* on the phone.
 3. **Contacts.** On the phone, an identifier's page has *Show*: a code on the
@@ -180,10 +180,14 @@ draft's values for everything else. The owner agreed on 2026-11-14.
 - **Runtime source.** The draft builds against the Foundation's archive
   `runtime-source-sedi-core-csp-20261107`. The fork's CI and Fortoid's reviewed
   pin in `scripts/build-canonical-fortweb-package.sh` change to it. The archive
-  is a download attached to a draft, which may be removed. The fork keeps its
-  own copy on its Releases page, checked against the same two digests, and the
-  builds read that copy. The same files are already inside every APK the fork
-  publishes.
+  is a download attached to one of the Foundation's releases, which may be
+  removed. Fortoid keeps its own copy on its Releases page, checked against the
+  archive's digest, and Fortoid's builds read that copy; every build checks
+  both digests again when it reads it. The wallet repository's own workflow
+  reads the Foundation's address, as the draft's build action names it, so that
+  the fork's copy of that action stays as the Foundation wrote it; if the
+  address fails, the workflow's inputs take the copy. The same files are
+  already inside every APK the fork publishes.
 - **One engine at a time.** The draft lets only one worker write the wallet's
   storage; a second is refused. One of the fork's tests opens a second engine
   and is rewritten. What the phone does when Android discards the page in the
@@ -475,22 +479,25 @@ engine and change as little of it as possible.
 - **What it is.** `fort-wallet-desktop.zip`: the built wallet, a start script
   `start-wallet.py` and a short `README.txt`.
 - **Starting it.** `python3 start-wallet.py` serves the folder at
-  `http://127.0.0.1:8765/` and opens the browser there. It needs Python 3 and
-  nothing else.
+  `http://127.0.0.1:8791/` and opens the browser there. It needs Python 3 and
+  nothing else. The port is not 8765: the wallet's development server uses
+  that one, and a browser keeps one wallet per address.
 - **A fixed address.** A browser keeps a wallet's storage per address. If the
   port is taken the script says so and stops; it does not pick another, because
   another address is an empty wallet.
 - **Only this computer.** The script listens on `127.0.0.1` only. It serves
   only files inside its own folder, lists no directories, and answers a request
-  only when the request names `127.0.0.1:8765` as its host. A request that
-  names `localhost:8765` is sent on to `127.0.0.1:8765`, so there is one
+  only when the request names `127.0.0.1:8791` as its host. A request that
+  names `localhost:8791` is sent on to `127.0.0.1:8791`, so there is one
   address and one wallet.
 - **Which browser.** The automated tests use Chromium, so Chrome or Edge is the
   recommended browser. Others are not tested. Safari removes a site's storage
   after a week without use, which would remove the vault.
 - **Keeping the vault.** When a vault is made, the wallet asks the browser to
   keep its storage (`navigator.storage.persist()`), and Settings says whether
-  the browser agreed.
+  the browser agreed. Inside the phone app the wallet asks too and Settings
+  shows nothing: what Android's WebView answers, and what it then does with the
+  storage, is not known yet.
 - **One tab.** The draft lets one copy of the engine write at a time. A second
   tab is told that the wallet is already open in another.
 - **What the README says.** One tab. A browser profile with no extensions,
