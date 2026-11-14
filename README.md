@@ -76,6 +76,13 @@ uses the bridge above:
 
 - **Wallet-first launch.** A fresh install shows *Set up your wallet*
   (passcode only). Later launches open the default vault directly.
+- **Roles.** After unlock the wallet opens on *Roles*. Type an organization's
+  address (for example `mad.seriouscoder.one`) to see the roles it publishes;
+  every definition is checked against its SAID before it is shown. *Take on*
+  stores the role in the vault with a new or an existing identifier and lists
+  it under *My roles* with the warning *Not appointed yet*: the wallet cannot
+  hold grants yet. My roles needs no network. A source can be read only if it
+  sends `Access-Control-Allow-Origin: *`.
 - **Fingerprint unlock per vault.** After a passcode unlock the wallet offers to
   save that vault's passcode in the secret store; its unlock screen then prompts
   for a fingerprint automatically.
