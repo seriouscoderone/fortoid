@@ -76,8 +76,9 @@ uses the bridge above:
 
 - **Wallet-first launch.** A fresh install shows *Set up your wallet*
   (passcode only). Later launches open the default vault directly.
-- **Roles.** After unlock the wallet opens on *Roles*. Type an organization's
-  address (for example `mad.seriouscoder.one`) to see the roles it publishes;
+- **Roles.** After unlock the wallet opens on *Roles*, or on the page that was
+  last open in that vault. Type an organization's address (for example
+  `mad.seriouscoder.one`) to see the roles it publishes;
   every definition is checked against its SAID before it is shown. *Take on*
   stores the role in the vault with a new or an existing identifier and lists
   it under *My roles* with the warning *Not appointed yet*: the wallet cannot
