@@ -277,12 +277,13 @@ No native change. The new wallet commit is pinned and the APK builds from `dev`.
 ## Later slices (not in this design)
 
 - Holding grants, so the warning can clear, and the processes for acquiring
-  them. First step: a credential the definitions mark as self-issuing, issued
-  by its holder to itself (an owner's, for example), and then one that must
-  come from someone else (a cashier's, from that owner). Whether anyone accepts
-  the owner as an authority is each receiver's own decision. The published test
-  definitions say which responsibility issues each authorization (`issue`), but
-  carry no mark for self-issuing yet.
+  them. The owner's direction of 2026-11-14 replaces the first step written
+  here before (a credential its holder issues to itself): a grant arrives
+  unsolicited from the organization's owner, and the receiver admits it or
+  spurns it. Whether anyone accepts that owner as an authority is each
+  receiver's own decision. The published test definitions say which
+  responsibility issues each authorization (`issue`), but nothing about the
+  appointment a role itself needs. The design session is bead fortoid-xn7.
 - Plainer examples to explain the idea, in rising richness (owner,
   2026-11-12): an online shop, where a person is only a customer; a
   ride-hailing service, where a person can be a customer or a provider; a
