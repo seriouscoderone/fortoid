@@ -1,5 +1,7 @@
 # First Browser Demonstration Implementation Plan
 
+> **Status:** executed. Tasks 1 to 7 are done and reviewed; the wallet commit `1555227` of `seriouscoderone/fortweb` is pinned in Fortoid (`ee99e82`) and shipped in the `demo-latest` APK on 2026-11-14 (epic `fortoid-7ji`, closed). What changed on the way is in each task's "Decided in the ... review" bullets and in "Fixes before the pin".
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use beads-superpowers:subagent-driven-development (recommended) or beads-superpowers:executing-plans to implement this plan task-by-task. Each Task becomes a bead (`bd create -t task --parent <epic-id>`). Steps within tasks use checkbox (`- [ ]`) syntax for human readability.
 
 **Goal:** In the wallet, open a web address, see the roles an organization publishes there (every definition checked against its SAID), and take one on with an identifier, with a "Not appointed yet" warning.

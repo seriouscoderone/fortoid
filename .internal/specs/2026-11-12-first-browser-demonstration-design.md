@@ -8,6 +8,8 @@
 > review of 2026-11-13: one sentence where a browser cannot tell an unreachable
 > host from one that does not allow the read, limits on what a read and a role
 > may cost, a stricter text rule, and My roles read from the records alone.
+> Built and shipped in the `demo-latest` APK on 2026-11-14 (wallet commit
+> `1555227`); the text below describes what was built.
 
 ## Goal
 
