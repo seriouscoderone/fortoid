@@ -93,8 +93,10 @@ phone that holds test data only.
 **D3. The draft's test-only switch is turned on, and said.** The draft refuses
 to receive, grant or admit unless a setting that only its tests use is on. The
 fork's builds set it, and every credential screen carries the word
-*Experimental*. The draft's own word for what it allows is "synthetic" test
-credentials, which is what a proof of concept handles.
+"Experimental: for test credentials only". The draft's own word for what it
+allows is "synthetic" test credentials, which is what a proof of concept
+handles. The Foundation has not released this part of its engine, so nothing
+built on it is fit for a credential anyone depends on.
 
 **D4. Three carriers for one message.** A message is shown as one still code
 when it fits, as a cycling code when it does not, and always as text that can
@@ -183,9 +185,11 @@ One format for everything that is handed over. A message is a JSON object:
 | `schema` | `credential` only: the credential's ACDC schema as text, so the receiver need not have read the source. |
 | `name` | `identifier` only, optional: the name the sender suggests for itself, at most 64 characters. |
 
-A message is at most 48,000 bytes when packed. **Packed** means one marker byte
-followed by the message: `0x00` and the JSON text, or `0x01` and the JSON text
-compressed with raw deflate. The sender uses whichever is smaller.
+The JSON text of a message is at most 262,144 bytes. **Packed** means one
+marker byte followed by the message: `0x00` and the JSON text, or `0x01` and
+the JSON text compressed with raw deflate. The sender uses whichever is
+smaller. Unpacking stops, and the message is refused, as soon as more than
+262,144 bytes come out, so a small message cannot unfold into a huge one.
 
 A message proves nothing by itself. Everything in it is checked by the engine:
 key history, signatures, registry events, the schema against its SAID. A member
@@ -204,6 +208,8 @@ that is missing, unknown or of the wrong kind makes the message unreadable.
 - **Still or cycling.** A message that fits one code of version 20 or lower at
   error-correction level L is one still code, which is one frame. Anything
   larger cycles, with at most 300 bytes in a frame.
+- **Too long for codes.** A packed message of more than 48,000 bytes would need
+  more than 160 frames. It is offered as text only, and the dialog says why.
 - **Cycling.** It starts when the person taps *Start*, shows at most three
   frames a second, can be paused, and shows "frame 4 of 14". When the system
   asks for reduced motion, it does not cycle by itself: the person steps with
@@ -268,6 +274,8 @@ ACDC schema:
 - An annotation names the rule and the definition's SAID.
 - The schema's own SAID is computed as the KERI library computes it and stored
   in `$id`.
+- A definition whose schema has more than 200 properties in all, or is nested
+  more than four levels deep, is refused.
 
 The exact text is fixed by tests: the derived schema of every fixture
 definition is kept byte for byte, and a browser test shows the engine accepting
@@ -306,11 +314,11 @@ engine and change as little of it as possible.
 |---|---|
 | `handover.identifier` | Makes the message for one of the vault's identifiers. |
 | `handover.read` | Checks a message and says what it is. For a credential it returns what the review shows and keeps the message as pending. For an answer it records the answer if it matches a credential this vault sent. |
-| `handover.addContact` | Adds the identifier in a message as a contact under a name. |
+| `handover.addContact` | Adds an identifier as a contact under a name the person gives: from an identifier message, or from the history carried in a credential's proof. A name another contact already has is refused. |
 | `schemas.list` | The schemas in the vault's schema store, each with its organization, publication, tags and collection where a kept definition gives them, the role that may issue under it, and the attributes it describes. It sits beside the draft's `schemas.import` and `schemas.get`. |
 | `credentials.send` | Issues a credential under a schema a taken-on role may issue under, to a contact, and returns the message to hand over. Repeating it with the same request id issues nothing twice. |
-| `credentials.listIssued`, `credentials.listReceived` | The two lists. |
-| `grants.accept` | Stores a pending credential and returns the answer message. |
+| `credentials.listIssued`, `credentials.listReceived` | The two lists. Issued is read from the engine's own store, so a credential issued just before a failure still appears and can be shown. Received is read from the wallet's own records without checking every credential again. |
+| `grants.accept` | Stores a pending credential and returns the answer message. Accepting again returns the same answer. The sender has to be a contact: the draft's engine keeps a credential only from one. |
 | `grants.decline` | Builds the refusal, forgets the pending credential and returns the answer message. |
 | `grants.message` | Returns a message again: a credential sent earlier, or an answer given earlier. |
 | `activity.list` | Every exchange and its state. |
@@ -319,7 +327,14 @@ engine and change as little of it as possible.
   reader turns it away. `granting.py` adds the two missing pieces: building the
   refusal for a credential, and reading one on the sender's side.
 - **Registry.** One registry for each identifier that issues, made the first
-  time it issues.
+  time it issues. A registry for each credential, as the Foundation's Locksmith
+  makes, would add two events to the issuer's key history for every credential
+  where this adds one, and every credential message carries that whole history
+  (see "How far this goes").
+- **Identifiers without witnesses.** That is what the wallet makes today and
+  what is tested. An identifier with witnesses has a longer history to hand
+  over and needs its witnesses to issue; neither is covered here.
+- **Dates and times** are entered in local time and stored with their offset.
 - **What is stored.** Pending messages and the Activity records go into two new
   sub-databases, encrypted with the vault's keys as the draft encrypts received
   credentials. An Activity record holds the exchange's identifier, the other
@@ -341,6 +356,9 @@ engine and change as little of it as possible.
 - **Identifier page.** *Show*, beside the draft's *Export CESR*.
 - **Remote identifiers page.** *Add by scanning or pasting*, beside *Resolve
   OOBI*, *Scan QR code* and the draft's *Import CESR*.
+- **Add contact.** The person types the name. A name the sender suggests is
+  shown as "They call themselves (name)" with *Use this name*; it is never
+  filled in for them. Two contacts cannot have the same name.
 - **Roles page.** Each of My roles lists *Can issue* with one entry for every
   fact and authorization the role may issue, and *Issue* on each. In place of
   "Not appointed yet" the card says "This organization does not say yet what
@@ -360,6 +378,10 @@ engine and change as little of it as possible.
   not in your contacts" with its prefix. The schema, and who publishes it. The
   values. What was checked. *Close*, *Decline*, *Add credential*. Closing
   leaves it in Activity as *Awaiting your decision*.
+- **A sender who is not a contact.** The review shows everything, and *Decline*
+  works. *Add credential* first asks the person to name the sender, which makes
+  them a contact from the key history the credential came with. Naming them is
+  the person's own statement of who they take the sender to be.
 - **Credentials page.** Received, Issued, Activity, Schemas, the four entries
   the Foundation's Locksmith has under Credentials.
 - **Schemas.** The vault's ACDC schemas, grouped by organization, then
@@ -367,8 +389,8 @@ engine and change as little of it as possible.
   schema shows its title, its SAID, the attributes it describes and the role
   that may issue under it. A schema that came with a credential and is
   published by no organization the person has opened is in its own group.
-- **Experimental.** The word appears on the Credentials page, the issue form
-  and the review.
+- **Experimental.** "Experimental: for test credentials only" appears on the
+  Credentials page, the issue form and the review.
 
 ### The Android shell (Fortoid)
 
@@ -390,10 +412,23 @@ engine and change as little of it as possible.
 - **A fixed address.** A browser keeps a wallet's storage per address. If the
   port is taken the script says so and stops; it does not pick another, because
   another address is an empty wallet.
-- **Only this computer.** The script listens on `127.0.0.1` only and serves
-  only its own folder.
+- **Only this computer.** The script listens on `127.0.0.1` only. It serves
+  only files inside its own folder, lists no directories, and answers a request
+  only when the request names `127.0.0.1:8765` as its host. A request that
+  names `localhost:8765` is sent on to `127.0.0.1:8765`, so there is one
+  address and one wallet.
 - **Which browser.** The automated tests use Chromium, so Chrome or Edge is the
-  recommended browser. Others are not tested.
+  recommended browser. Others are not tested. Safari removes a site's storage
+  after a week without use, which would remove the vault.
+- **Keeping the vault.** When a vault is made, the wallet asks the browser to
+  keep its storage (`navigator.storage.persist()`), and Settings says whether
+  the browser agreed.
+- **One tab.** The draft lets one copy of the engine write at a time. A second
+  tab is told that the wallet is already open in another.
+- **What the README says.** One tab. A browser profile with no extensions,
+  because an extension that may read pages can read a wallet. The same release
+  for the phone and the computer. This is a demonstration build.
+- **Checking the download.** The release notes give the SHA-256 of the zip.
 - **Same build.** The computer package and the APK are built from one pinned
   wallet commit, so two wallets that meet are the same version.
 
@@ -405,7 +440,11 @@ engine and change as little of it as possible.
 | A cycling code was not read to the end | "Not all of the code was read. Try again." |
 | Frames of two different codes were read | "The code changed while it was being read. Try again." |
 | The message is larger than the limit | "That message is larger than the wallet accepts." |
-| The camera cannot be opened on the computer | "The camera could not be opened. You can paste the text instead." |
+| The camera cannot be opened, on the computer or the phone | "The camera could not be opened. You can paste the text instead." |
+| A message is too long to show as codes | "This is too long to show as a code. Copy the text instead." |
+| A contact name is already in use | "You already have a contact with that name." |
+| The wallet is open in another tab | "The wallet is already open in another tab. Close it there first." |
+| The wallet could not save | "The wallet could not save. Close it and open it again." |
 | The identifier is one of the vault's own | "That is one of your own identifiers." |
 | The identifier is already a contact | "You already have this contact as (name)." |
 | Its history conflicts with the contact held | "This identifier's history does not match the contact you have. Nothing was changed." |
@@ -431,7 +470,11 @@ engine and change as little of it as possible.
   on a page except as text.
 - **A suggested name is a suggestion.** The review never shows the sender's own
   name for itself as if it were known. It shows the contact's name the person
-  gave, or the identifier's prefix.
+  gave, or the identifier's prefix. When a contact is added, the suggested name
+  is shown and never filled in, and no two contacts share a name, so a sender
+  cannot slip into the place of someone the person already knows.
+- **The scanning screen on the phone** belongs to the app alone: no other app
+  can start it or receive what it reads.
 - **"Published by" is checked, not claimed.** It is shown only when the wallet
   derives the same schema from a definition it read and kept itself.
 - **Consent.** Nothing of a credential is stored before *Add credential*. The
@@ -463,7 +506,9 @@ engine and change as little of it as possible.
   by the sender; the same message read twice; a message altered in transit; a
   credential for an identifier in another vault; a schema no kept definition
   matches; a definition no schema can be made from; a form with a field that
-  cannot be drawn.
+  cannot be drawn; a credential from a sender who is not a contact; accepting
+  twice; a refusal read again after the vault was closed and opened; a message
+  that unfolds past the limit; a message too long for codes.
 - **Codes.** Sizes from one frame up to the limit are drawn and read back. The
   reader's camera path runs against a stream made from a canvas. Cycling,
   pausing and the reduced-motion mode are tested on the Show dialog.
@@ -471,7 +516,8 @@ engine and change as little of it as possible.
   camera cannot be tested without a device, so the owner checks scanning a
   still and a cycling code from the computer's screen.
 - **The computer package.** A test starts the script against the built package
-  and loads the wallet from it.
+  and loads the wallet from it. Tests for the script: a request for a file
+  outside the folder, a request that names another host, a port already taken.
 - **Every pin.** All of Fortoid's workflows on `dev`, with the start-up proof
   among them, after each pin.
 - **Suite rules.** Each new browser test file is named in `package.json` and
@@ -506,6 +552,32 @@ Each phase has its own plan and ends with a build the owner can try.
 - **A laptop camera reading a phone.** Still codes are the easy case. For the
   demonstration the computer shows the cycling code and the phone, with the
   better camera, reads it.
+- **Adding a credential gets slower.** The draft checks every credential the
+  vault already holds each time it stores one. With a handful this is not felt.
+  The plan measures it on the phone with twenty.
+- **Whose work it is.** The draft is merged as a merge, not squashed, so its
+  commits keep their author.
+
+## How far this goes
+
+The draft sends the issuer's whole history with every credential: every event
+of the issuer's key history, and every event of the registry. Each credential
+an identifier issues adds one event to both. So each credential makes that
+identifier's next message longer, by about 700 bytes when packed, which is two
+or three frames.
+
+- The first credential from an identifier is about fourteen to twenty frames,
+  five to seven seconds a cycle.
+- After fifteen to twenty credentials a cycle takes about twenty seconds.
+- After about sixty the message passes the limit for codes and can only be
+  handed over as text.
+- The draft itself accepts at most 256 events in a registry.
+
+Nothing in this design changes that, because it is how the draft checks a
+credential. A role taken on with its own identifier has its own history, which
+keeps histories short. The real remedies are later work: sending only what the
+receiver does not hold, which needs the Foundation's engine to check a history
+from where the receiver's copy ends, or a mailbox, where length matters less.
 
 ## Open with the MAD side
 
