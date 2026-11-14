@@ -40,14 +40,14 @@ appoints someone to a role.
 4. **Issue.** On the computer, the *membership* card lists *admission* under
    *Can issue*. *Issue* asks for the recipient (a contact) and shows a form
    drawn from the published definition: valid from, valid until, place. *Send
-   credential* shows a cycling code.
+   credential* shows a cycling code, which is good for five minutes.
 5. **Review.** On the phone, *Receive* scans the cycling code and shows its
    progress ("7 of 14"). *Review credential* then says who it is from, which
    schema it follows and which organization publishes that schema, the values,
    and what was checked. The buttons are *Close*, *Decline* and *Add credential*.
 6. **Answer.** After *Add credential* or *Decline* the phone shows the answer as
-   a code. The computer scans it, and its Activity list says *Accepted* or
-   *Declined*.
+   a code, to be read within five minutes. The computer scans it, and its
+   Activity list says *Accepted* or *Declined*.
 7. **Lists.** A **Credentials** page has Received, Issued, Activity and
    Schemas. Schemas lists the vault's ACDC schemas by organization and
    publication.
@@ -156,6 +156,19 @@ way to "it just opens", later.
 **D13. Three steps, three plans.** Each ends with a build the owner can try:
 the base, hand-over with contacts, then schemas and credentials.
 
+**D14. Messages that are handed over use the Foundation's Locksmith's replay
+settings.** The KERI library refuses a message that is too old, or dated ahead
+of the reader's clock. The draft sets this for delivery over a network: one
+second of difference between clocks, five seconds for a message, five minutes
+for a whole exchange. A message carried by a person cannot meet that. On the
+merged engine a credential read ten seconds after it was made was refused, and
+so was one read by a wallet whose clock was three seconds behind. The
+Foundation's Locksmith, which also hands messages over as files, sets ten
+seconds between clocks, five minutes for a message and twenty-four hours for an
+exchange. The fork uses Locksmith's values for the three messages that are
+handed over (the credential, the acceptance and the refusal) and leaves the
+draft's values for everything else. The owner agreed on 2026-11-14.
+
 ## Architecture
 
 ### The base
@@ -166,7 +179,11 @@ the base, hand-over with contacts, then schemas and credentials.
   exists only in the session's scratch space and is reviewed before it is used.
 - **Runtime source.** The draft builds against the Foundation's archive
   `runtime-source-sedi-core-csp-20261107`. The fork's CI and Fortoid's reviewed
-  pin in `scripts/build-canonical-fortweb-package.sh` change to it.
+  pin in `scripts/build-canonical-fortweb-package.sh` change to it. The archive
+  is a download attached to a draft, which may be removed. The fork keeps its
+  own copy on its Releases page, checked against the same two digests, and the
+  builds read that copy. The same files are already inside every APK the fork
+  publishes.
 - **One engine at a time.** The draft lets only one worker write the wallet's
   storage; a second is refused. One of the fork's tests opens a second engine
   and is rewritten. What the phone does when Android discards the page in the
@@ -254,6 +271,39 @@ One reader, *Receive*, with two ways in: scan or paste.
 The joined bytes are unpacked and handed to the engine. Nothing from a message
 is shown before the engine has checked it.
 
+### How long a message is good for
+
+The library's replay protection gives every credential, acceptance and refusal
+a time limit (D14). The values are set where the draft sets its own, as three
+more entries for the routes `/ipex/grant`, `/ipex/admit` and `/ipex/spurn`:
+10,000 ms between clocks, 300,000 ms for a message, 3,600,000 ms for a message
+signed by several keys, 86,400,000 ms for an exchange.
+
+- **A code is good for five minutes** from when its message was made. The Show
+  dialog says until when, and after that says the code is no longer good. This
+  is so for a credential and for an answer. An identifier's code has no time
+  limit: it is key history, not an exchange.
+- **A credential can be sent again.** *Make a new code* makes a new message for
+  the same credential. That is a new exchange with its own five minutes and its
+  own twenty-four hours. A receiver who already has the credential is told so.
+- **An answer is given once.** The library refuses a second answer to the same
+  credential. The answer's code is good for five minutes, and the dialog says
+  "Show this to (name) within five minutes." If it is not read in that time the
+  sender does not learn the answer by hand-over. The person's own decision
+  stands either way.
+- **An answer is due within twenty-four hours** of the credential being sent.
+  After that the review offers only *Close*, and Activity says *Expired* on
+  both sides, as the Foundation's Locksmith does.
+- **Clocks.** The two devices have to agree within ten seconds. The wallet
+  compares a message's time with its own clock before it hands the message to
+  the engine, so that it can say which of the two is wrong: the code is no
+  longer good, or the clocks disagree.
+- **Checking first.** After the draft's engine has refused a message it keeps
+  the vault refusing every request until the vault is closed. So the wallet
+  checks what it can before the engine's own receiving step: the time, the
+  proof, and that the credential is for an identifier of this vault. If the
+  engine still refuses, the wallet closes the vault and says so.
+
 ### Schemas
 
 A credential's type is its ACDC schema. The wallet has one notion and one page
@@ -296,9 +346,16 @@ schema store, which is the KERI library's own.
 **A schema that arrives with a credential.** The message carries the schema.
 The wallet checks it against its SAID. If the wallet holds the definition the
 annotation names, and deriving from it gives the same SAID, the schema is shown
-as published by that organization, in that publication. Otherwise it is shown
-as a schema no organization the person has opened publishes. A claim in the
-schema alone proves nothing.
+as published by that organization, in that publication, and by each one when
+several publish the same definition. Otherwise it is shown as a schema no
+organization the person has opened publishes. A claim in the schema alone
+proves nothing.
+
+**A schema stays.** Removing a role removes its definitions, as today, and
+leaves its schemas in the schema store. The draft checks every held credential
+against its schema each time it stores another, so a schema that a credential
+uses must never go missing. A schema whose definition is gone is listed with
+the ones no opened organization publishes.
 
 **Schemas from elsewhere.** The schema store holds any ACDC schema, whatever
 made it. In this version schemas enter it in the two ways above. Adding one
@@ -326,7 +383,7 @@ engine and change as little of it as possible.
 | `credentials.listIssued`, `credentials.listReceived` | The two lists. Issued is read from the engine's own store, so a credential issued just before a failure still appears and can be shown. Received is read from the wallet's own records without checking every credential again. |
 | `grants.accept` | Gives the answer that the credential is taken, which makes it one of the vault's credentials, and returns the answer message. Accepting again returns the same answer. The sender has to be a contact: the draft's engine holds a credential only from one. |
 | `grants.decline` | Builds the refusal, links it to the credential as its answer where the engine holds the credential, and returns the answer message. Declining again returns the same answer. |
-| `grants.message` | Returns a message again: a credential sent earlier, or an answer given earlier. |
+| `grants.message` | For a credential sent earlier, makes a new message for it, which starts a new exchange. For an answer given earlier, returns that answer while its five minutes last. |
 | `activity.list` | Every exchange and its state. |
 
 - **Declining.** The KERI library builds a refusal and accepts one; the draft's
@@ -351,7 +408,7 @@ engine and change as little of it as possible.
   gave), so that it can be shown again, with the other party, the schema's
   title and the times, so that the lists need not check every credential again.
 - **States.** *Waiting for (name)*, *Awaiting your decision*, *Accepted*,
-  *Declined*.
+  *Declined*, *Expired*.
 - **A vault with no passcode** cannot hold a received credential: the draft
   encrypts them with the vault's keys.
 
@@ -453,6 +510,10 @@ engine and change as little of it as possible.
 | The message is larger than the limit | "That message is larger than the wallet accepts." |
 | The camera cannot be opened, on the computer or the phone | "The camera could not be opened. You can paste the text instead." |
 | A message is too long to show as codes | "This is too long to show as a code. Copy the text instead." |
+| A message is older than five minutes | "This code is no longer good. Ask for a new one." |
+| A message is dated ahead of this device's clock | "The clocks of the two devices disagree. Set both to automatic time." |
+| A credential was sent more than a day ago | "This exchange has expired. Ask the sender to send it again." |
+| An answer's five minutes have passed | "This answer can no longer be shown. Your decision stands." |
 | A contact name is already in use | "You already have a contact with that name." |
 | The wallet is open in another tab | "The wallet is already open in another tab. Close it there first." |
 | The wallet could not save | "The wallet could not save. Close it and open it again." |
@@ -509,6 +570,10 @@ engine and change as little of it as possible.
   copied. The dialog says so.
 - **Repeats.** Reading the same credential or answer again changes nothing and
   says what is already known.
+- **Replay protection stays on.** The library's check of a message's age is
+  kept, with the Foundation's Locksmith's limits for the three messages that
+  are handed over (D14). What the longer limit costs: for five minutes after a
+  code is made, a credential the issuer has since withdrawn can still be added.
 - **Cameras.** On the phone the page gets no camera. On the computer the camera
   is open only while the reader shows it, and frames go nowhere but the reader.
 - **Experimental.** The Foundation has not released what the switch turns on.
@@ -528,6 +593,12 @@ engine and change as little of it as possible.
   cannot be drawn; a credential from a sender who is not a contact; accepting
   twice; a refusal read again after the vault was closed and opened; a message
   that unfolds past the limit; a message too long for codes.
+- **Time.** With the engine's clock moved in the test: a credential read after
+  four minutes and after six; a reader whose clock is five seconds behind and
+  one that is thirty seconds behind; an answer given after a day; an answer
+  read after its five minutes; a second message for the same credential, read
+  by a wallet that has the credential and by one that has not; a refused
+  message that leaves the vault usable.
 - **Codes.** Sizes from one frame up to the limit are drawn and read back. The
   reader's camera path runs against a stream made from a canvas. Cycling,
   pausing and the reduced-motion mode are tested on the Show dialog.
@@ -555,10 +626,11 @@ Each phase has its own plan and ends with a build the owner can try.
    reader on the computer, `qr.scanSequence` on the phone, *Show* on an
    identifier and *Add by scanning or pasting*. The owner makes the phone and
    the computer contacts of each other.
-3. **Schemas and credentials.** The rule, the Schemas page, *Can issue* on a role,
-   the issue form, *Review credential* with *Add credential* and *Decline*, the
-   answer, Activity and the two lists. The owner sends a credential from one to
-   the other and declines a second one.
+3. **Schemas and credentials.** The replay settings of D14, the rule, the
+   Schemas page, *Can issue* on a role, the issue form, *Review credential*
+   with *Add credential* and *Decline*, the answer, Activity and the two lists.
+   The owner sends a credential from one to the other and declines a second
+   one.
 
 ## What can go wrong in this work
 
@@ -576,6 +648,12 @@ Each phase has its own plan and ends with a build the owner can try.
   The plan measures it on the phone with twenty.
 - **Whose work it is.** The draft is merged as a merge, not squashed, so its
   commits keep their author.
+- **A clock that is not set automatically.** Ten seconds between two devices is
+  little for a computer whose clock is set by hand. The wallet says when the
+  clocks disagree, and the README says to use automatic time.
+- **An answer nobody read in time.** The sender then sees the credential as
+  unanswered and, after a day, as expired, though the receiver did answer.
+  Hand-over cannot mend that; a mailbox can.
 
 ## How far this goes
 
@@ -617,8 +695,9 @@ proposal once this document is approved.
 - Showing a held credential to a third party.
 - Withdrawing a credential, and telling the holder.
 - Linking and checking what a responsibility relies on, and its rules.
-- A mailbox, so a credential arrives by itself. The owner's fork has designs
-  for one.
+- A mailbox, so a credential arrives by itself and an answer reaches the
+  sender whenever it is given. The owner's fork has designs for one.
+- Sending only the part of an issuer's history the receiver does not hold.
 - Custom screens as wallet plugins, with a safety model fit for a phone.
 - A public address for the wallet, with "install as app".
 - Frames that tolerate a missed frame.
@@ -637,7 +716,9 @@ All public.
   review dialog and its buttons (`ui/vault/credentials/received/accept_grant.py`),
   the Activity list (`ui/vault/credentials/activity.py`), the form drawn from a
   schema (`ui/vault/credentials/issued/issue.py`), what is kept before consent
-  and after a refusal (`core/ipexing.py`, `tests/test_credentialing.py`).
+  and after a refusal (`core/ipexing.py`, `tests/test_credentialing.py`), the
+  replay settings and the wording for an expired exchange
+  (`core/vaulting.py`, `core/ipexing.py`).
 - The owner's fork, `seriouscoderone/locksmith` branch `development` at
   `0d68fad`: the form builder and its visible error for a field it cannot draw
   (`ui/onboarding/form_builder.py`), the role statuses
@@ -652,3 +733,88 @@ All public.
 - The Foundation's draft, `keri-foundation/fortweb#42` at `2db99e8`: the engine
   this design calls.
 - BBQr, <https://github.com/coinkite/BBQr/blob/master/BBQr.md>.
+
+## Stress Test Results: standard credential screens and hand-over
+
+Run on 2026-11-14, after the owner approved the design and before any plan was
+written. Bead fortoid-4ai. The throwaway tests behind the measured results are
+in the session's scratch space (`pr42-spike/timing`), run on the merged engine.
+
+### Resolved Decisions
+
+With the owner:
+
+- **How far hand-over by code goes.** Agreed. Every credential an identifier
+  issues makes its next message longer, because the draft sends the issuer's
+  whole history. Codes are comfortable to about fifteen or twenty credentials
+  for one identifier and impossible past about sixty. Accepted for this
+  version.
+- **The publisher of a schema is not the issuer of a credential.** Agreed. The
+  review says so in a sentence beneath the schema.
+- **A received credential is held the KERI library's way.** The owner's point:
+  the library already has this, so it is not a design choice. The design had
+  planned a store of its own and now uses the library's.
+- **Replay settings.** Agreed. The draft's settings refuse a hand-carried
+  message. The fork uses the Foundation's Locksmith's settings for the three
+  messages that are handed over (D14).
+
+From the code, without a question:
+
+- The message format stays: the draft needs a proof beside the signed bytes.
+- One registry for each issuing identifier stays: a registry for each
+  credential adds two events to the issuer's history where this adds one.
+- The draft holds a credential only from a contact, so a sender who is not one
+  is named by the person before the credential is added.
+- A suggested name is shown and never filled in, and no two contacts share a
+  name.
+- An answer is given once: the library refuses a second. A credential can be
+  sent again as a new exchange.
+- After a refused message the draft keeps the vault refusing requests until it
+  is closed, so the wallet checks time, proof and recipient first.
+- The Received list is read from the wallet's own records, because the draft
+  checks every held credential again each time it stores one.
+- A schema is never removed from the schema store, because the draft checks
+  held credentials against their schemas.
+- The computer's start script answers only its own address, serves only its own
+  folder, and the wallet asks the browser to keep its storage.
+- The fork keeps its own copy of the Foundation's runtime source archive.
+
+### Changes Made
+
+- D3: the label reads "Experimental: for test credentials only".
+- D6 rewritten: held the library's way; no store of the wallet's own for a
+  received credential.
+- D7 and the screens say schema, with one Schemas page (the owner's comment at
+  the review).
+- D14 added, with the section "How long a message is good for": five minutes
+  for a code, twenty-four hours for an exchange, ten seconds between clocks,
+  *Make a new code*, the state *Expired*, an answer given once.
+- The section "How far this goes" added.
+- Limits added: what a message may unfold into, the size of a schema, a message
+  too long for codes offered as text only.
+- Review: the sentence about the schema's publisher; a sender who is not a
+  contact; the suggested name.
+- The wallet for the computer: one address, the host check, keeping storage,
+  one tab, no extensions, the checksum.
+- Testing: the cases for time, for a sender who is not a contact, for repeats,
+  and for the start script.
+
+### Deferred / Parking Lot
+
+- Notes for the Foundation about its draft, for the owner to pass on if he
+  wishes: its replay settings against Locksmith's; the vault left refusing
+  requests after a refused message; no path for older vaults; a refusal that
+  its reader turns away; two tests that fail on the draft alone; every message
+  carrying the issuer's whole history.
+- Erasing a declined credential, a mailbox, and sending only the missing part
+  of a history are in "Later slices".
+- Whether the phone survives Android discarding the page while a scan is open
+  is checked on the phone in the second phase.
+
+### Confidence Assessment
+
+- Overall: medium to high for the first two phases, medium for the third.
+- Areas of concern: the third phase rests on the draft's engine behaving under
+  human timing as it did in these short tests; ten seconds between clocks may
+  prove tight on a real computer; a laptop camera reading cycling codes from a
+  phone is untested; the draft may change under the work.
