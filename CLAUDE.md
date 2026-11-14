@@ -47,6 +47,13 @@ Upstream remote: `https://github.com/keri-foundation/fortoid.git`.
   background as possible (expect FortWeb to be re-skinned). Don't add identity
   setup steps to onboarding: applications will create or suggest AIDs when they
   need them.
+- **Universal UI.** (Owner, 2026-11-14.) A MAD app that has no workbench of its
+  own is carried out with the wallet's standard features: identifiers,
+  contacts, and credentials that are issued, received, accepted or declined,
+  and shown to someone. The published definitions supply the types and the
+  forms. Build and improve those standard screens; do not build screens for one
+  app or one kind of credential. Custom UIs (workbenches) come later, as wallet
+  plugins.
 
 ## Build
 
