@@ -134,6 +134,16 @@ calls nothing. The unit tests run on plain CPython with stand-ins for `js`, so
 only a browser test that waits for the callback shows whether it works; the
 roles time-limit tests (`playwright/fortweb-roles-time.spec.ts`) do.
 
+Credentials: the Foundation's draft `keri-foundation/fortweb#42`
+(`git fetch upstream refs/pull/42/head:refs/remotes/upstream/pr42`; 23 commits,
+the last on 2026-11-07, when read on 2026-11-14) adds a credential engine to the
+wallet: registries, schema import by SAID, registry-backed issuance and
+revocation, and IPEX grant, receive and admit, behind a test-only switch and on
+its own runtime source (`runtime-source-sedi-core-csp-20261107`). It has no
+screens for credentials, no spurn, and nothing that carries a message from one
+wallet to another. Read its current state before designing anything that issues
+or holds a credential, so the fork does not write a second engine.
+
 Ship a FortWeb change to the APK: push fortweb `dev`, set its full SHA in
 Fortoid `config/fortweb-runtime.json`, verify locally with
 `scripts/build-canonical-fortweb-package.sh --fortweb-dir /home/user/fortweb`
