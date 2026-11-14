@@ -801,8 +801,8 @@ From the code, without a question:
 
 ### Deferred / Parking Lot
 
-- Notes for the Foundation about its draft, for the owner to pass on if he
-  wishes: its replay settings against Locksmith's; the vault left refusing
+- Notes for the Foundation about its draft, for the owner to pass on (bead
+  fortoid-dvq): its replay settings against Locksmith's; the vault left refusing
   requests after a refused message; no path for older vaults; a refusal that
   its reader turns away; two tests that fail on the draft alone; every message
   carrying the issuer's whole history.
