@@ -72,6 +72,12 @@ clone to `/home/user/fortweb`; `upstream` = keri-foundation/fortweb). Its
 `dev` = Foundation main + this project's features; its `main` mirrors the
 Foundation's. Upstream PRs (e.g. #49) branch from `upstream/main`.
 
+Its `credentials` = `dev` + the Foundation's draft credential engine
+(`keri-foundation/fortweb#42`, merged at `2db99e8`) + the work that needs it.
+**Fortoid pins `credentials`**, and new wallet work goes there until the
+Foundation merges the draft; then `dev` takes `upstream/main` and `credentials`
+is merged into it.
+
 Build the runtime locally (Python 3.12 venv; system Python is 3.13):
 
 ```bash
@@ -79,15 +85,18 @@ python3.12 -m venv ~/fwvenv && export PATH=~/fwvenv/bin:$PATH
 cd /home/user/fortweb && npm ci
 rm -rf build/runtime-source
 python3 scripts/acquire_runtime_source.py \
-  --url https://github.com/keri-foundation/fortweb/releases/download/runtime-source-pyodide-314-hio-0.7.20-20260910/runtime-source.tar.gz \
-  --sha256 394db70ecbed6e5718e6ec0afbcb43eaf6384e2ab78218e55067ec9e5d83fb34 \
-  --manifest-sha256 371ef8cb8c6641b68afe6799931678435e2a629dcf4aa7ba2e344efab5a10f32 \
+  --url https://github.com/seriouscoderone/fortoid/releases/download/runtime-source-sedi-core-csp-20261107/runtime-source.tar.gz \
+  --sha256 3618b16ee66aca5704d76310b792383f0a32260c2e774fd5e42f8b62e5f7dd9a \
+  --manifest-sha256 f76cf23f5cdaa5fe3f7a0e264c862290f9c8b6be2aafca6622926e1869731431 \
   --output build/runtime-source
 python3 -m pip install --no-index --no-deps build/runtime-source/wheelhouse/{packaging,setuptools,wheel}-*.whl
 export FORTWEB_RUNTIME_SOURCE_MANIFEST=build/runtime-source/manifest.json
-export FORTWEB_RUNTIME_SOURCE_MANIFEST_SHA256=371ef8cb8c6641b68afe6799931678435e2a629dcf4aa7ba2e344efab5a10f32
+export FORTWEB_RUNTIME_SOURCE_MANIFEST_SHA256=f76cf23f5cdaa5fe3f7a0e264c862290f9c8b6be2aafca6622926e1869731431
 npm run build:runtime            # rebuild after every app/ change
 ```
+
+The address is this repository's own checked copy of the Foundation's archive
+`runtime-source-sedi-core-csp-20261107` (`config/runtime-source-mirror.json`).
 
 Tests: Playwright must use the container's Chromium, so create an uncommitted
 `playwright.local.config.ts` (spread `./playwright.config`, set
@@ -95,7 +104,7 @@ Tests: Playwright must use the container's Chromium, so create an uncommitted
 `.git/info/exclude`), then
 `npm run test:e2e:prepared-runtime -- -c playwright.local.config.ts --trace off`.
 Also: `npm run typecheck`, `python3 -m unittest python.test_vaulting`,
-`npm run test:runtime-publication-workflow`. Phone features are tested with a
+`npm run test:runtime-publication-workflow`. After a build, also `python3 -m unittest python/test_verify_runtime_tree.py python/test_start_wallet.py`. The workflow's canary (`playwright/runtime-canary.spec.ts`) passes only with the headless shell, the browser the workflow installs (in this container under `/opt/pw-browsers/chromium_headless_shell-*`): the full Chromium also asks for `/favicon.ico`, the canary's server answers 404, and the test counts that as an error. Phone features are tested with a
 fake `window.bridge` (see `playwright/fortweb-*native*`/`fingerprint` specs).
 
 The wallet's landing page is **Roles** (fortweb `app/features/roles/roles-page.ts`):
@@ -141,17 +150,41 @@ calls nothing. The unit tests run on plain CPython with stand-ins for `js`, so
 only a browser test that waits for the callback shows whether it works; the
 roles time-limit tests (`playwright/fortweb-roles-time.spec.ts`) do.
 
-Credentials: the Foundation's draft `keri-foundation/fortweb#42`
-(`git fetch upstream refs/pull/42/head:refs/remotes/upstream/pr42`; 23 commits,
-the last on 2026-11-07, when read on 2026-11-14) adds a credential engine to the
-wallet: registries, schema import by SAID, registry-backed issuance and
-revocation, and IPEX grant, receive and admit, behind a test-only switch and on
-its own runtime source (`runtime-source-sedi-core-csp-20261107`). It has no
-screens for credentials, no spurn, and nothing that carries a message from one
-wallet to another. Read its current state before designing anything that issues
-or holds a credential, so the fork does not write a second engine.
+On a computer the wallet is served by fortweb `scripts/start_wallet.py` at
+`http://127.0.0.1:8791/` (never 8765, the development server's port: a browser
+keeps one wallet per address). Fortoid's Demo APK workflow publishes it with
+the built wallet as `fort-wallet-desktop.zip`. Its browser test
+(`playwright/fortweb-desktop-start.spec.ts`) runs against an unzipped download
+when `FORT_WALLET_FOLDER` names the folder. Its unit tests
+(`python/test_start_wallet.py`) also run on Windows, macOS
+and Linux with Python 3.9, 3.11 and 3.13 (fortweb
+`.github/workflows/start-script-platforms.yml`), on a push to `credentials`
+that changes the script or its tests: Windows path rules differ (a path
+part such as `C:..`), and only a real Windows run shows it.
 
-Ship a FortWeb change to the APK: push fortweb `dev`, set its full SHA in
+Credentials: the wallet runs on the Foundation's draft engine, merged into
+`credentials`. What that changes: the wallet's storage is named `@fortweb-v2/`
+and vaults made by earlier builds are not shown; one engine at a time may hold
+the storage (a second gets `BUSY`), so a test that needs a second engine has
+the page lock its vault first; the engine writes to storage after every
+request; after a request that failed with unsaved changes the vault refuses
+everything until it is closed. Receiving a credential and every `ipex` method
+(`credentials.receive`, `credentials.getReceived`, `ipex.grant`, `ipex.receive`,
+`ipex.admit`, `ipex.present`, `ipex.verifyPresentation`, `ipex.get`) run only
+because `pyscript-ci.toml` carries `fort_synthetic_recipient_testing = true`,
+and each call must still pass `syntheticOnly: true`. The draft's own credential tests
+(`playwright/registry-*.spec.ts`, `playwright/sedi-*.spec.ts`) are run by no
+workflow; one of them, "recipient API is disabled in the ordinary runtime",
+fails here by design. Before changing the draft's files, read
+`.internal/specs/2026-11-14-standard-credential-screens-design.md`.
+
+When the draft moves: if the Foundation added commits to it, merge
+`upstream/pr42` into `credentials` again. If it rewrote its branch, start a
+new branch from `dev`, merge the new head the way Task 1 of
+`.internal/plans/2026-11-14-credentials-base.md` did, and cherry-pick this
+branch's own commits onto it.
+
+Ship a FortWeb change to the APK: push fortweb `credentials`, set its full SHA in
 Fortoid `config/fortweb-runtime.json`, verify locally with
 `scripts/build-canonical-fortweb-package.sh --fortweb-dir /home/user/fortweb`
 (needs `build/runtime-source` absent) + `node tools/import-fortweb-runtime-package.mjs`
