@@ -72,6 +72,7 @@ class BuildTest(unittest.TestCase):
                     self.assertEqual(info.external_attr, 0o100644 << 16)
                     self.assertEqual(info.compress_type, zipfile.ZIP_DEFLATED)
                     self.assertEqual(info.create_system, 3)  # made on Unix, whatever system builds it
+        self.assertEqual(sorted(os.listdir(self.temp.name)), ["README.txt", "out.zip", "payload", "start_wallet.py"])
 
     def test_deflates_every_entry_at_level_9(self):
         words = "the wallet keeps a vault in the browser under one address and asks it to keep its storage".split()
@@ -405,6 +406,33 @@ class BuildTest(unittest.TestCase):
             code, out, err = self.run_main()
         self.assertEqual((code, out), (1, ""))
         self.assertEqual(err, "error: the folder 'app/runtime' cannot be listed: Permission denied\n")
+        self.assertFalse(self.output.exists())
+
+    def test_refuses_a_folder_whose_listing_fails_part_way(self):
+        real_scandir = os.scandir
+        failing = self.payload / "app"
+
+        class Listing:
+            def __init__(self, path):
+                self.real = real_scandir(path)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                self.real.close()
+
+            def __iter__(self):
+                yield next(iter(self.real))
+                raise OSError(5, "Input/output error")
+
+        def scandir(path):
+            return Listing(path) if Path(path) == failing else real_scandir(path)
+
+        with mock.patch.object(os, "scandir", scandir):
+            code, out, err = self.run_main()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, "error: the folder 'app' cannot be listed: Input/output error\n")
         self.assertFalse(self.output.exists())
 
     def test_refuses_a_real_folder_that_cannot_be_listed(self):
