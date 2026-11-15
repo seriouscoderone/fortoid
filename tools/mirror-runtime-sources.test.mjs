@@ -73,9 +73,20 @@ const path = require('node:path');
 const state = process.env.STANDIN_STATE;
 const args = process.argv.slice(2);
 fs.appendFileSync(path.join(state, 'calls.log'), JSON.stringify(['curl', ...args]) + '\\n');
-const missing = () => { process.stderr.write('curl: (22) The requested URL returned error: 404\\n'); process.exit(22); };
 const out = args[args.indexOf('--output') + 1];
 const url = args[args.length - 1];
+// As GitHub answers: a missing download is a 404, which only --fail turns into a failure (otherwise curl saves the
+// error page and exits 0); a download that exists is a redirect, which only --location follows (otherwise curl saves
+// the redirect page and exits 0).
+const missing = () => {
+  if (!args.includes('--fail')) { fs.writeFileSync(out, 'Not Found'); process.exit(0); }
+  process.stderr.write('curl: (22) The requested URL returned error: 404\\n');
+  process.exit(22);
+};
+const serve = (file) => {
+  if (!args.includes('--location')) { fs.writeFileSync(out, '<html><body>You are being redirected.</body></html>'); return; }
+  fs.copyFileSync(file, out);
+};
 const prefix = 'https://github.com/' + process.env.GITHUB_REPOSITORY + '/releases/download/';
 if (url.startsWith(prefix)) {
   const [tag, name] = url.slice(prefix.length).split('/');
@@ -87,9 +98,9 @@ if (url.startsWith(prefix)) {
   const override = path.join(state, 'public-bytes');
   const file = fs.existsSync(override) ? override : path.join(state, 'releases', tag, name);
   if (!fs.existsSync(file)) missing();
-  fs.copyFileSync(file, out);
+  serve(file);
 } else if (url === fs.readFileSync(path.join(state, 'upstream-url'), 'utf8')) {
-  fs.copyFileSync(path.join(state, 'upstream-bytes'), out);
+  serve(path.join(state, 'upstream-bytes'));
 } else {
   missing();
 }
