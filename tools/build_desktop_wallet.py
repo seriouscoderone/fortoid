@@ -53,7 +53,9 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
     found: list[tuple[str, Path]] = []
     for name in PACKAGE:
         top = payload / name
-        if top.is_symlink() or not top.exists():
+        if top.is_symlink():
+            raise NotAPackage(f"{name} is a link")
+        if not top.exists():
             raise NotAPackage(f"the payload has no {name}")
         if name in FOLDERS:
             if not top.is_dir():
@@ -81,6 +83,8 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
 def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:
     """Writes the zip and returns its SHA-256."""
     for label, path in (("start script", start_script), ("readme", readme)):
+        if not path.is_symlink() and not path.exists():
+            raise NotAPackage(f"the {label} {ascii(str(path))} does not exist")
         if path.is_symlink() or not path.is_file():
             raise NotAPackage(f"the {label} is not a plain file")
     entries = []

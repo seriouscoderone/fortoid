@@ -97,6 +97,35 @@ class BuildTest(unittest.TestCase):
         with self.assertRaisesRegex(tool.NotAPackage, "no runtime-closure.json"):
             tool.build(self.payload, self.script, self.readme, self.output)
 
+    def test_refuses_a_top_entry_that_is_a_link(self):
+        for name in ("vendor", "runtime-closure.json"):
+            with self.subTest(name=name):
+                entry = self.payload / name
+                held = entry.rename(self.payload / (name + "-held"))
+                try:
+                    entry.symlink_to(held, target_is_directory=held.is_dir())
+                except OSError:
+                    held.rename(entry)
+                    self.skipTest("this system makes no symbolic links")
+                try:
+                    code, out, err = self.run_main()
+                    self.assertEqual((code, out), (1, ""))
+                    self.assertEqual(err, f"error: {name} is a link\n")
+                    self.assertFalse(self.output.exists())
+                finally:
+                    entry.unlink()
+                    held.rename(entry)
+
+    def test_refuses_a_start_script_or_a_note_that_does_not_exist(self):
+        missing = Path(self.temp.name) / "missing.py"
+        code, out, err = self.run_main(script=missing)
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, f"error: the start script {ascii(str(missing))} does not exist\n")
+        code, out, err = self.run_main(readme=missing)
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, f"error: the readme {ascii(str(missing))} does not exist\n")
+        self.assertFalse(self.output.exists())
+
     def test_refuses_a_link(self):
         link = self.payload / "app" / "leak.txt"
         try:
