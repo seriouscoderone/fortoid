@@ -29,9 +29,9 @@ browser, built from the same wallet commit as the APK. Unzip it and, in the
 unzipped folder, run `python3 start-wallet.py`. The wallet opens at
 `http://127.0.0.1:8791/`. It needs Python 3.9 or later and nothing else. Use Chrome or
 Edge, one tab, in a browser profile with no extensions. The script serves the
-folder to that computer only, and the browser keeps the vault under that one
-address. The release notes give the zip's SHA-256; `README.txt` in the zip
-says the rest.
+wallet in the folder, to that computer only, and the browser keeps the vault
+under that one address. The release notes give the zip's SHA-256;
+`README.txt` in the zip says the rest.
 
 The Releases page has one more entry, "Runtime source copy": this
 repository's checked copy of the archive the wallet is built from. It is not
