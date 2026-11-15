@@ -2,8 +2,10 @@
  * Whether the browser has agreed to keep this wallet's storage.
  *
  * A browser may remove a site's storage when space runs short unless the site has asked to keep it and the browser
- * has agreed. The wallet asks when a vault is made. In a regular browser, Settings shows the answer. Inside the phone
- * app the wallet asks too and shows nothing: what Android's WebView answers, and what it then does, is not yet known.
+ * has agreed. Chrome and Edge decide by themselves, without asking the person, and say no to a site they have just
+ * met; they may say yes once it has been used. So the wallet asks each time a vault is opened, which includes the
+ * moment it is made. In a regular browser, Settings shows the answer. Inside the phone app the wallet asks too and
+ * shows nothing: what Android's WebView answers, and what it then does, is not yet known.
  */
 export type StorageKept = "kept" | "not-kept" | "unknown";
 
@@ -23,7 +25,7 @@ async function answer(ask: (storage: StorageManager) => Promise<boolean>): Promi
     }
 }
 
-/** Asks the browser to keep the wallet's storage. A browser that says no is asked again when the next vault is made. */
+/** Asks the browser to keep the wallet's storage. A browser that says no is asked again at the next opening. */
 export function askToKeepStorage(): Promise<StorageKept> {
     return answer((storage) => (typeof storage.persist === "function" ? storage.persist() : Promise.reject()));
 }

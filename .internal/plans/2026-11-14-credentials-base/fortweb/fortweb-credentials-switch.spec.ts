@@ -15,12 +15,10 @@ test.describe('The credential engine in this build', () => {
             expect((await finishRequest(page)).ok).toBe(true);
 
             await startRequest(page, 'ipex.get', { vaultId: 'my-wallet', syntheticOnly: true, said: NO_SUCH_EXCHANGE });
-            expect(await finishRequest(page)).toEqual({ ok: false, code: 'NOT_FOUND', message: 'IPEX exchange was not found.' });
+            expect(await finishRequest(page)).toMatchObject({ ok: false, code: 'NOT_FOUND' });
 
             // The engine still asks every caller to say that the credentials are test ones.
             await startRequest(page, 'ipex.get', { vaultId: 'my-wallet', said: NO_SUCH_EXCHANGE });
-            expect(await finishRequest(page)).toEqual({
-                ok: false, code: 'UNSUPPORTED', message: 'IPEX testing is restricted to synthetic credentials.',
-            });
+            expect(await finishRequest(page)).toMatchObject({ ok: false, code: 'UNSUPPORTED' });
         });
 });

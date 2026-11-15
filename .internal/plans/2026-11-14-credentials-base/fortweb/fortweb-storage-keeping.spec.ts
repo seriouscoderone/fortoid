@@ -4,20 +4,23 @@ import { setUpWallet } from './fixtures/roles';
 
 interface Asked { asked: number; kept: boolean }
 
-/** The browser's answer is made the test's own: it counts how often it is asked, and says `agrees` every time. */
-async function browserThat(page: Page, agrees: boolean): Promise<void> {
-    await page.addInitScript((answer) => {
+/**
+ * The browser's answers are made the test's own: it counts how often it is asked and gives `answers` in turn, the
+ * last one again from then on.
+ */
+async function browserThatSays(page: Page, ...answers: boolean[]): Promise<void> {
+    await page.addInitScript((given) => {
         const state = { asked: 0, kept: false };
         (window as unknown as { storageAsked: typeof state }).storageAsked = state;
         StorageManager.prototype.persist = async function persist(): Promise<boolean> {
+            state.kept = given[Math.min(state.asked, given.length - 1)] === true;
             state.asked += 1;
-            state.kept = answer;
-            return answer;
+            return state.kept;
         };
         StorageManager.prototype.persisted = async function persisted(): Promise<boolean> {
             return state.kept;
         };
-    }, agrees);
+    }, answers);
 }
 
 /** Stands in for the phone app: its bridge is there, and offers nothing. */
@@ -55,7 +58,7 @@ function keptByTheBrowser(page: Page) {
 
 test.describe('Keeping the wallet\'s storage', () => {
     test('making a wallet asks the browser once, and Settings says the browser agreed', async ({ page }) => {
-        await browserThat(page, true);
+        await browserThatSays(page, true);
         await setUpWallet(page);
         await expect.poll(async () => (await asked(page)).asked).toBe(1);
         await openSettings(page);
@@ -63,7 +66,7 @@ test.describe('Keeping the wallet\'s storage', () => {
     });
 
     test('Settings says so when the browser did not agree', async ({ page }) => {
-        await browserThat(page, false);
+        await browserThatSays(page, false);
         await setUpWallet(page);
         await expect.poll(async () => (await asked(page)).asked).toBe(1);
         await openSettings(page);
@@ -71,8 +74,22 @@ test.describe('Keeping the wallet\'s storage', () => {
             .toHaveText('No. The browser may remove this wallet\'s storage when it runs short of space.');
     });
 
+    test('a browser that said no is asked again when the vault is next opened, and Settings follows its answer', async ({ page }) => {
+        await browserThatSays(page, false, true);
+        await setUpWallet(page);
+        await expect.poll(async () => (await asked(page)).asked).toBe(1);
+        await page.getByRole('button', { name: 'Lock vault' }).click();
+        await expect(page.getByRole('heading', { name: 'Open My Wallet' })).toBeVisible({ timeout: 60_000 });
+        await page.getByLabel('Passcode', { exact: true }).fill('roles-pass-1');
+        await page.getByRole('button', { name: 'Open', exact: true }).click();
+        await expect(page.getByRole('heading', { name: 'Roles', exact: true, level: 1 })).toBeVisible({ timeout: 60_000 });
+        await expect.poll(async () => (await asked(page)).asked).toBe(2);
+        await openSettings(page);
+        await expect(keptByTheBrowser(page)).toHaveText('Yes');
+    });
+
     test('inside the phone app the wallet still asks, and Settings has no line about a browser', async ({ page }) => {
-        await browserThat(page, false);
+        await browserThatSays(page, false);
         await insideThePhoneApp(page);
         await setUpWallet(page);
         await expect.poll(async () => (await asked(page)).asked).toBe(1);

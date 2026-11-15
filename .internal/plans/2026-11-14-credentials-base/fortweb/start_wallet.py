@@ -136,15 +136,17 @@ def main(argv: list[str] | None = None) -> int:
     if absent:
         print(f"This folder is not a wallet package: it has no {', '.join(absent)}.", file=sys.stderr)
         return 2
+    address = f"http://{HOST}:{PORT}/"
     try:
         server = Server(root, PORT)
     except OSError:
         print(f"Port {PORT} on this computer is in use, perhaps by another copy of this wallet.\n"
               "The wallet keeps its storage under one address, so this script does not pick another port.\n"
-              "Close the other program and start again.", file=sys.stderr)
+              "Close the other program and start again. Until this script says the wallet is running,\n"
+              f"do not open {address}: whatever holds the port would be answering there.", file=sys.stderr)
         return 1
-    address = f"http://{HOST}:{PORT}/"
-    print(f"The wallet is at {address}\nLeave this window open while you use it. Press Ctrl+C to stop.", flush=True)
+    print(f"The wallet is at {address}\nLeave this window open while you use it. Press Ctrl+C to stop.\n"
+          "If it opens in a browser other than Chrome or Edge, copy the address into one of those.", flush=True)
     if not args.no_browser:
         webbrowser.open(address)
     try:
