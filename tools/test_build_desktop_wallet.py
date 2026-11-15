@@ -300,6 +300,75 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(err, "error: 'app/\\xe9\\u202e.js' cannot be read: Permission denied\n")
         self.assertFalse(self.output.exists())
 
+    def test_shows_a_name_whose_look_fails_through_ascii(self):
+        locked = self.payload / "app" / "locked"
+        locked.mkdir()
+        unseen = locked / "é‮ж.js"
+        unseen.write_text("x")
+        real_stat, real_lstat = os.stat, os.lstat
+
+        def refused(real):
+            def look(path, *args, **kwargs):
+                if os.fspath(path) == str(unseen):
+                    raise PermissionError(13, "Permission denied", str(path))
+                return real(path, *args, **kwargs)
+            return look
+
+        with mock.patch.object(os, "stat", refused(real_stat)), mock.patch.object(os, "lstat", refused(real_lstat)):
+            code, out, err = self.run_main()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, "error: 'app/locked/\\xe9\\u202e\\u0436.js' cannot be looked at: Permission denied\n")
+        self.assertTrue(err.isascii())
+        self.assertFalse(self.output.exists())
+
+    def test_shows_a_non_ascii_name_through_ascii_in_every_refusal(self):
+        root = Path(self.temp.name)
+        with self.subTest("is not a plain file"):
+            payload = self.make_payload(root / "plain")
+            try:
+                (payload / "app" / "é.txt").symlink_to(self.readme)
+            except OSError:
+                self.skipTest("this system makes no symbolic links")
+            code, out, err = self.run_main(payload=payload)
+            self.assertEqual((code, out, err), (1, "", "error: 'app/\\xe9.txt' is not a plain file\n"))
+        with self.subTest("is not allowed"):
+            if sys.platform == "win32":
+                self.skipTest("Windows can make no such file name")
+            payload = self.make_payload(root / "allowed")
+            (payload / "app" / "é:b.txt").write_text("x")
+            code, out, err = self.run_main(payload=payload)
+            self.assertEqual((code, out, err), (1, "", "error: the file name 'app/\\xe9:b.txt' is not allowed\n"))
+        with self.subTest("cannot be listed"):
+            payload = self.make_payload(root / "listed")
+            folder = payload / "app" / "é"
+            folder.mkdir()
+            (folder / "inner.js").write_text("x")
+            real_scandir = os.scandir
+
+            def scandir(path):
+                if Path(path) == folder:
+                    raise PermissionError(13, "Permission denied", str(path))
+                return real_scandir(path)
+
+            with mock.patch.object(os, "scandir", scandir):
+                code, out, err = self.run_main(payload=payload)
+            self.assertEqual((code, out, err), (1, "", "error: the folder 'app/\\xe9' cannot be listed: Permission denied\n"))
+        with self.subTest("cannot be read"):
+            payload = self.make_payload(root / "read")
+            unread = payload / "app" / "é.js"
+            unread.write_text("x")
+            real_read_bytes = Path.read_bytes
+
+            def read_bytes(path):
+                if path == unread:
+                    raise PermissionError(13, "Permission denied", str(path))
+                return real_read_bytes(path)
+
+            with mock.patch.object(Path, "read_bytes", read_bytes):
+                code, out, err = self.run_main(payload=payload)
+            self.assertEqual((code, out, err), (1, "", "error: 'app/\\xe9.js' cannot be read: Permission denied\n"))
+        self.assertFalse(self.output.exists())
+
     def test_a_failed_write_leaves_the_output_path_as_it_was(self):
         real_writestr = zipfile.ZipFile.writestr
 

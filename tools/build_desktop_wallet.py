@@ -31,6 +31,15 @@ class NotAPackage(Exception):
     pass
 
 
+def mode_of(path: Path, payload: Path) -> int:
+    """The mode of `path` itself (a link is not followed). A failure is refused with the name shown through ascii()."""
+    try:
+        return path.lstat().st_mode
+    except OSError as error:
+        shown = ascii(path.relative_to(payload).as_posix())
+        raise NotAPackage(f"{shown} cannot be looked at: {error.strerror or error}") from error
+
+
 def files_in(folder: Path, payload: Path) -> list[Path]:
     """Every path under `folder` that is not a folder; a link is listed, not followed. Any listing error stops it."""
     try:
@@ -41,7 +50,7 @@ def files_in(folder: Path, payload: Path) -> list[Path]:
         raise NotAPackage(f"the folder {shown} cannot be listed: {error.strerror or error}") from error
     found: list[Path] = []
     for path in paths:
-        if path.is_symlink() or not path.is_dir():
+        if not stat.S_ISDIR(mode_of(path, payload)):
             found.append(path)
         else:
             found.extend(files_in(path, payload))
@@ -69,7 +78,7 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
             files = [top]
         for path in files:
             inside = path.relative_to(payload).as_posix()
-            if path.is_symlink() or not path.is_file():
+            if not stat.S_ISREG(mode_of(path, payload)):
                 raise NotAPackage(f"{ascii(inside)} is not a plain file")
             # An unzip program on Windows reads \\ as a separator (and : as a drive), so such a name could land elsewhere.
             # A name that is not UTF-8 reaches Python with surrogates, which a zip cannot hold.
