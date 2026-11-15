@@ -92,21 +92,26 @@ class BuildTest(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_refuses_a_start_script_or_a_note_that_is_not_a_plain_file(self):
-        target = Path(self.temp.name) / "target.txt"
-        target.write_text("target")
-        link = Path(self.temp.name) / "link.txt"
-        try:
-            link.symlink_to(target)
-        except OSError:
-            link = None
-        folder = Path(self.temp.name) / "folder"
-        folder.mkdir()
-        for bad in [path for path in (link, folder) if path]:
+        def refused(bad):
             with self.assertRaisesRegex(tool.NotAPackage, "start script is not a plain file"):
                 tool.build(self.payload, bad, self.readme, self.output)
             with self.assertRaisesRegex(tool.NotAPackage, "readme is not a plain file"):
                 tool.build(self.payload, self.script, bad, self.output)
-        self.assertFalse(self.output.exists())
+            self.assertFalse(self.output.exists())
+
+        with self.subTest("a folder"):
+            folder = Path(self.temp.name) / "folder"
+            folder.mkdir()
+            refused(folder)
+        with self.subTest("a link"):
+            target = Path(self.temp.name) / "target.txt"
+            target.write_text("target")
+            link = Path(self.temp.name) / "link.txt"
+            try:
+                link.symlink_to(target)
+            except OSError:
+                self.skipTest("this system makes no symbolic links")
+            refused(link)
 
     def test_refuses_an_entry_of_the_wrong_kind_or_an_empty_folder(self):
         def refused(message):
