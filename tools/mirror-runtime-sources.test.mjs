@@ -177,10 +177,16 @@ function world({ listTool } = {}) {
   return { state, release, run, calls, ghCalls, asset, done };
 }
 
+const GH_CALLS = ['view', 'download', 'create', 'upload'];
+
 function inWorld(use, options) {
   const w = world(options);
   try {
     use(w);
+    // The script never deletes or edits: the only gh calls it makes are these four.
+    for (const call of w.calls().filter((item) => item[0] === 'gh')) {
+      assert.ok(call[1] === 'release' && GH_CALLS.includes(call[2]), `a gh call the script never makes: ${JSON.stringify(call)}`);
+    }
   } finally {
     w.done();
   }
