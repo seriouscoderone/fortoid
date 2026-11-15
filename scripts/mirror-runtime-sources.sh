@@ -37,7 +37,12 @@ ARCHIVE=runtime-source.tar.gz
 PUBLIC_ATTEMPTS=6
 RETRY_PAUSE="${MIRROR_RETRY_PAUSE:-10}"
 
-: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be set}"
+# Exactly owner/name: one slash, letters, digits, '.', '_' and '-' on each side.
+# A host or a second slash would change what GH_REPO names below.
+if [[ ! "${GITHUB_REPOSITORY:-}" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+  echo "::error::GITHUB_REPOSITORY must be owner/name (one slash; letters, digits, '.', '_' and '-' on each side), not '${GITHUB_REPOSITORY:-}'"
+  exit 1
+fi
 : "${GITHUB_SHA:?GITHUB_SHA must be set}"
 
 # Every gh call acts on GITHUB_REPOSITORY at HOST, the repository whose public

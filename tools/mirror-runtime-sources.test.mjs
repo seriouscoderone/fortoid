@@ -327,6 +327,19 @@ test('gh acts on github.com even when the caller has GH_HOST set to another host
   assert.equal(w.ghCalls('create').length, 1);
 }));
 
+for (const [label, value] of [
+  ['a name with a host', 'host.example/example-owner/example-repo'],
+  ['an owner alone', 'example-owner'],
+  ['an empty value', ''],
+]) {
+  test(`a GITHUB_REPOSITORY that is not owner/name (${label}) stops the run before any call`, () => inWorld((w) => {
+    const { status, output } = w.run({ GITHUB_REPOSITORY: value });
+    assert.notEqual(status, 0, output);
+    assert.deepEqual(w.calls(), [], 'neither gh nor curl was called');
+    assert.match(output, /^::error::GITHUB_REPOSITORY must be owner\/name/m);
+  }));
+}
+
 test('a list that gives no source stops the run and says so', () => inWorld((w) => {
   const { status, output } = w.run();
   assert.notEqual(status, 0, output);
