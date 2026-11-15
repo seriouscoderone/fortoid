@@ -38,8 +38,17 @@ matches() { echo "$1  $2" | sha256sum --check --status; }
 while IFS=$'\t' read -r TAG UPSTREAM SHA256 <&3; do
   WORK="$(mktemp -d "${WORKROOT}/source.XXXXXX")"
   COPY="${WORK}/${ARCHIVE}"
-  if gh release view "$TAG" > /dev/null 2>&1; then
-    if gh release download "$TAG" --pattern "$ARCHIVE" --dir "$WORK" 2> /dev/null; then
+  # gh's own messages always reach the log. Only "release not found" is read
+  # as absence; any other failure stops the run.
+  VIEWED=0
+  NAMES="$(gh release view "$TAG" --json assets --jq '.assets[].name' 2> "${WORK}/view.err")" || VIEWED=$?
+  cat "${WORK}/view.err" >&2
+  if [ "$VIEWED" -eq 0 ]; then
+    if grep -qxF "$ARCHIVE" <<< "$NAMES"; then
+      if ! gh release download "$TAG" --pattern "$ARCHIVE" --dir "$WORK"; then
+        echo "::error::gh could not download the copy under release ${TAG}"
+        exit 1
+      fi
       if ! matches "$SHA256" "$COPY"; then
         echo "::error::the copy under release ${TAG} does not match its digest"
         exit 1
@@ -48,8 +57,11 @@ while IFS=$'\t' read -r TAG UPSTREAM SHA256 <&3; do
       continue
     fi
     MAKE=upload
-  else
+  elif grep -qF 'release not found' "${WORK}/view.err"; then
     MAKE=create
+  else
+    echo "::error::gh could not read release ${TAG}"
+    exit 1
   fi
   curl --fail --location --silent --show-error --output "$COPY" "$UPSTREAM"
   if ! matches "$SHA256" "$COPY"; then

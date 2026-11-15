@@ -38,7 +38,11 @@ const release = path.join(state, 'releases', tag);
 const option = (name) => { const at = rest.indexOf(name); return at < 0 ? undefined : rest[at + 1]; };
 if (command === 'view') {
   if (!fs.existsSync(release)) fail('release not found');
-  for (const name of fs.readdirSync(release)) process.stdout.write(name + '\\n');
+  if (JSON.stringify(rest) === JSON.stringify(['--json', 'assets', '--jq', '.assets[].name'])) {
+    for (const name of fs.readdirSync(release)) process.stdout.write(name + '\\n');
+  } else {
+    process.stdout.write('title:\\tRuntime source copy: ' + tag + '\\n');
+  }
 } else if (command === 'download') {
   if (!fs.existsSync(release)) fail('release not found');
   const file = path.join(release, option('--pattern'));
@@ -215,4 +219,23 @@ test('wrong bytes from upstream: nothing is created', () => inWorld((w) => {
   assertNothingWritten(w);
   assert.equal(w.asset(), undefined);
   assert.match(output, /does not match its digest/);
+}));
+
+test('gh failing for another reason: its message is shown and nothing is written', () => inWorld((w) => {
+  const message = 'HTTP 502: Bad Gateway (https://api.github.com/repos/example-owner/example-repo/releases/tags/x)';
+  writeFileSync(path.join(w.state, 'fail-view'), message);
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assert.ok(output.includes(message), output);
+  assertNothingWritten(w);
+}));
+
+test('gh failing to download a copy it lists: its message is shown and nothing is written', () => inWorld((w) => {
+  w.release({ 'runtime-source.tar.gz': BYTES });
+  const message = 'HTTP 503: Service Unavailable';
+  writeFileSync(path.join(w.state, 'fail-download'), message);
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assert.ok(output.includes(message), output);
+  assertNothingWritten(w);
 }));
