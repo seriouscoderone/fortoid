@@ -79,6 +79,12 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           ASSETS=(fortoid-demo.apk)
           if [ "$PAYLOAD" = "success" ]; then
+            # The zip goes out only with its own digest: both are checked before the release is touched.
+            if ! [[ "$DESKTOP_SHA256" =~ ^[0-9a-f]{64}$ ]] ||
+              ! echo "${DESKTOP_SHA256}  fort-wallet-desktop.zip" | sha256sum --check --strict --quiet -; then
+              echo "::error::fort-wallet-desktop.zip is missing or is not the file the build step gave a SHA-256 for"
+              exit 1
+            fi
             WALLET="Includes the FortWeb wallet (KERI Wallet icon). A wallet made with a build from before the credential engine is not shown by this one: the engine keeps its storage in a new place."
           else
             WALLET="FortWeb wallet build failed for this commit; only the Fort Demo icon works."
