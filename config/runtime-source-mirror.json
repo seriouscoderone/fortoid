@@ -1,0 +1,10 @@
+{
+  "schema": "fortoid.runtime-source-mirror.v1",
+  "sources": [
+    {
+      "tag": "runtime-source-sedi-core-csp-20261107",
+      "upstream": "https://github.com/keri-foundation/fortweb/releases/download/runtime-source-sedi-core-csp-20261107/runtime-source.tar.gz",
+      "sha256": "3618b16ee66aca5704d76310b792383f0a32260c2e774fd5e42f8b62e5f7dd9a"
+    }
+  ]
+}
