@@ -49,6 +49,12 @@ WORKROOT="$(mktemp -d)"
 trap 'rm -rf "$WORKROOT"' EXIT
 
 node "${REPO_ROOT}/tools/list-runtime-source-mirrors.mjs" ${MIRROR_LIST:+"$MIRROR_LIST"} > "${WORKROOT}/mirrors.tsv"
+# The list always holds a source, so a list tool that printed none and exited 0
+# went wrong: a run that copied nothing must not look like one that checked all.
+if [ ! -s "${WORKROOT}/mirrors.tsv" ]; then
+  echo "::error::the mirror list gave no source: tools/list-runtime-source-mirrors.mjs printed nothing"
+  exit 1
+fi
 
 matches() { echo "$1  $2" | sha256sum --check --status; }
 

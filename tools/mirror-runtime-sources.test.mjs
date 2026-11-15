@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -95,9 +95,19 @@ if (url.startsWith(prefix)) {
 }
 `;
 
-/** A fresh made-up world: stand-ins on PATH, a list of one source, the upstream archive and no releases. */
-function world() {
+/** A fresh made-up world: stand-ins on PATH, a list of one source, the upstream archive and no releases. With
+ * `listTool`, the script runs from a copy in a scratch tree whose tools/list-runtime-source-mirrors.mjs is that text. */
+function world({ listTool } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), 'fortoid-mirror-'));
+  let script = SCRIPT;
+  if (listTool !== undefined) {
+    const tree = path.join(dir, 'tree');
+    mkdirSync(path.join(tree, 'scripts'), { recursive: true });
+    mkdirSync(path.join(tree, 'tools'));
+    script = path.join(tree, 'scripts', path.basename(SCRIPT));
+    copyFileSync(SCRIPT, script);
+    writeFileSync(path.join(tree, 'tools', 'list-runtime-source-mirrors.mjs'), listTool);
+  }
   const bin = path.join(dir, 'bin');
   const state = path.join(dir, 'state');
   mkdirSync(bin);
@@ -120,7 +130,7 @@ function world() {
     for (const [name, text] of Object.entries(files)) writeFileSync(path.join(state, 'releases', TAG, name), text);
   };
   const run = (extraEnv = {}) => {
-    const result = spawnSync('bash', [SCRIPT], {
+    const result = spawnSync('bash', [script], {
       cwd: dir,
       encoding: 'utf8',
       env: {
@@ -156,8 +166,8 @@ function world() {
   return { state, release, run, calls, ghCalls, asset, done };
 }
 
-function inWorld(use) {
-  const w = world();
+function inWorld(use, options) {
+  const w = world(options);
   try {
     use(w);
   } finally {
@@ -286,3 +296,10 @@ test('gh acts on GITHUB_REPOSITORY even when GH_REPO names another repository', 
   assert.ok(w.ghCalls('view').length > 0, 'gh was called');
   assert.equal(w.ghCalls('create').length, 1);
 }));
+
+test('a list that gives no source stops the run and says so', () => inWorld((w) => {
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assert.deepEqual(w.calls(), [], 'neither gh nor curl was called');
+  assert.match(output, /^::error::the mirror list gave no source/m);
+}, { listTool: '// prints nothing and exits 0\n' }));
