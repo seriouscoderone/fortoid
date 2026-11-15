@@ -73,7 +73,8 @@ clone to `/home/user/fortweb`; `upstream` = keri-foundation/fortweb). Its
 Foundation's. Upstream PRs (e.g. #49) branch from `upstream/main`.
 
 Its `credentials` = `dev` + the Foundation's draft credential engine
-(`keri-foundation/fortweb#42`, merged at `2db99e8`) + the work that needs it.
+(`keri-foundation/fortweb#42` at `2db99e8`, merged in `9ec62aa`) + the work
+that needs it.
 **Fortoid pins `credentials`**, and new wallet work goes there until the
 Foundation merges the draft; then `dev` takes `upstream/main` and `credentials`
 is merged into it.
@@ -104,8 +105,15 @@ Tests: Playwright must use the container's Chromium, so create an uncommitted
 `.git/info/exclude`), then
 `npm run test:e2e:prepared-runtime -- -c playwright.local.config.ts --trace off`.
 Also: `npm run typecheck`, `python3 -m unittest python.test_vaulting`,
-`npm run test:runtime-publication-workflow`. After a build, also `python3 -m unittest python/test_verify_runtime_tree.py python/test_start_wallet.py`. The workflow's canary (`playwright/runtime-canary.spec.ts`) passes only with the headless shell, the browser the workflow installs (in this container under `/opt/pw-browsers/chromium_headless_shell-*`): the full Chromium also asks for `/favicon.ico`, the canary's server answers 404, and the test counts that as an error. Phone features are tested with a
-fake `window.bridge` (see `playwright/fortweb-*native*`/`fingerprint` specs).
+`npm run test:runtime-publication-workflow`. After a build, also
+`python3 -m unittest python/test_verify_runtime_tree.py
+python/test_start_wallet.py`. The workflow's canary
+(`playwright/runtime-canary.spec.ts`) passes only with the headless shell, the
+browser the workflow installs (in this container under
+`/opt/pw-browsers/chromium_headless_shell-*`): the full Chromium also asks for
+`/favicon.ico`, the canary's server answers 404, and the test counts that as an
+error. Phone features are tested with a fake `window.bridge` (see
+`playwright/fortweb-*native*`/`fingerprint` specs).
 
 The wallet's landing page is **Roles** (fortweb `app/features/roles/roles-page.ts`):
 it reads a `mad-discovery` source, lists the roles it publishes and lets the
@@ -157,10 +165,10 @@ the built wallet as `fort-wallet-desktop.zip`. Its browser test
 (`playwright/fortweb-desktop-start.spec.ts`) runs against an unzipped download
 when `FORT_WALLET_FOLDER` names the folder. Its unit tests
 (`python/test_start_wallet.py`) also run on Windows, macOS
-and Linux with Python 3.9, 3.11 and 3.13 (fortweb
-`.github/workflows/start-script-platforms.yml`), on a push to `credentials`
-that changes the script or its tests: Windows path rules differ (a path
-part such as `C:..`), and only a real Windows run shows it.
+and Linux with Python 3.11 and 3.13, and with 3.9 on Windows and macOS
+(fortweb `.github/workflows/start-script-platforms.yml`), on a push to
+`credentials` that changes the script or its tests: Windows path rules differ
+(a path part such as `C:..`), and only a real Windows run shows it.
 
 Credentials: the wallet runs on the Foundation's draft engine, merged into
 `credentials`. What that changes: the wallet's storage is named `@fortweb-v2/`
@@ -172,17 +180,21 @@ everything until it is closed. Receiving a credential and every `ipex` method
 (`credentials.receive`, `credentials.getReceived`, `ipex.grant`, `ipex.receive`,
 `ipex.admit`, `ipex.present`, `ipex.verifyPresentation`, `ipex.get`) run only
 because `pyscript-ci.toml` carries `fort_synthetic_recipient_testing = true`,
-and each call must still pass `syntheticOnly: true`. The draft's own credential tests
-(`playwright/registry-*.spec.ts`, `playwright/sedi-*.spec.ts`) are run by no
-workflow; one of them, "recipient API is disabled in the ordinary runtime",
-fails here by design. Before changing the draft's files, read
+and each call must still pass `syntheticOnly: true`. The engine has no screens
+for credentials, no spurn, and nothing that carries a message from one wallet to
+another. The draft's own credential tests (`playwright/registry-*.spec.ts`,
+`playwright/sedi-*.spec.ts`) are run by no workflow; one of them, "recipient API
+is disabled in the ordinary runtime", fails here by design. Before changing the
+draft's files, read this repository's
 `.internal/specs/2026-11-14-standard-credential-screens-design.md`.
 
-When the draft moves: if the Foundation added commits to it, merge
+When the draft moves: read its head in fortweb with
+`git fetch upstream refs/pull/42/head:refs/remotes/upstream/pr42` and compare
+it with `2db99e8`. If the Foundation added commits to it, merge
 `upstream/pr42` into `credentials` again. If it rewrote its branch, start a
-new branch from `dev`, merge the new head the way Task 1 of
-`.internal/plans/2026-11-14-credentials-base.md` did, and cherry-pick this
-branch's own commits onto it.
+new branch from `dev`, merge the new head the way Task 1 of this
+repository's `.internal/plans/2026-11-14-credentials-base.md` did, and
+cherry-pick this branch's own commits onto it.
 
 Ship a FortWeb change to the APK: push fortweb `credentials`, set its full SHA in
 Fortoid `config/fortweb-runtime.json`, verify locally with
