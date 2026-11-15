@@ -86,6 +86,23 @@ class BuildTest(unittest.TestCase):
             tool.build(self.payload, self.script, self.readme, self.output)
         self.assertFalse(self.output.exists())
 
+    def test_refuses_a_start_script_or_a_note_that_is_not_a_plain_file(self):
+        target = Path(self.temp.name) / "target.txt"
+        target.write_text("target")
+        link = Path(self.temp.name) / "link.txt"
+        try:
+            link.symlink_to(target)
+        except OSError:
+            link = None
+        folder = Path(self.temp.name) / "folder"
+        folder.mkdir()
+        for bad in [path for path in (link, folder) if path]:
+            with self.assertRaisesRegex(tool.NotAPackage, "start script is not a plain file"):
+                tool.build(self.payload, bad, self.readme, self.output)
+            with self.assertRaisesRegex(tool.NotAPackage, "readme is not a plain file"):
+                tool.build(self.payload, self.script, bad, self.output)
+        self.assertFalse(self.output.exists())
+
     def test_the_program_prints_the_digest_and_fails_plainly(self):
         self.assertEqual(tool.main(["--payload", str(self.payload), "--start-script", str(self.script),
                                     "--readme", str(self.readme), "--output", str(self.output)]), 0)

@@ -45,6 +45,9 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
 
 def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:
     """Writes the zip and returns its SHA-256."""
+    for label, path in (("start script", start_script), ("readme", readme)):
+        if path.is_symlink() or not path.is_file():
+            raise NotAPackage(f"the {label} is not a plain file")
     entries = [(name, path.read_bytes()) for name, path in package_files(payload)]
     entries.append(("start-wallet.py", start_script.read_bytes()))
     entries.append(("README.txt", readme.read_bytes()))
