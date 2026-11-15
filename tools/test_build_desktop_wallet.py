@@ -223,10 +223,11 @@ class BuildTest(unittest.TestCase):
         for number, (case, change, message) in enumerate(cases):
             with self.subTest(case=case):
                 payload = self.make_payload(Path(self.temp.name) / f"case-{number}")
+                output = Path(self.temp.name) / f"case-{number}.zip"
                 change(payload)
                 with self.assertRaisesRegex(tool.NotAPackage, message):
-                    tool.build(payload, self.script, self.readme, self.output)
-                self.assertFalse(self.output.exists())
+                    tool.build(payload, self.script, self.readme, output)
+                self.assertFalse(output.exists())
         tool.build(self.payload, self.script, self.readme, self.output)
 
     @unittest.skipIf(sys.platform == "win32", "Windows can make no such file name (c: there is a drive)")
