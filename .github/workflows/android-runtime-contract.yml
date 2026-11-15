@@ -48,6 +48,9 @@ jobs:
       - name: Run runtime source mirror list tests
         run: node --test tools/list-runtime-source-mirrors.test.mjs
 
+      - name: Run runtime source mirror script tests
+        run: node --test tools/mirror-runtime-sources.test.mjs
+
   package-apk-integrity:
     name: Android package and APK integrity
     runs-on: ubuntu-latest
