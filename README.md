@@ -22,6 +22,21 @@ from your browser when Android asks. Newer builds install over older ones
 
 The APK has two icons: **KERI Wallet** (FortWeb) and **Fort Demo** (`DemoActivity`, its own task).
 
+### Run the wallet on a computer
+
+The same release carries `fort-wallet-desktop.zip`: the wallet for a desktop
+browser, built from the same wallet commit as the APK. Unzip it and, in the
+unzipped folder, run `python3 start-wallet.py`. The wallet opens at
+`http://127.0.0.1:8791/`. It needs Python 3.9 or later and nothing else. Use Chrome or
+Edge, one tab, in a browser profile with no extensions. The script serves the
+folder to that computer only, and the browser keeps the vault under that one
+address. The release notes give the zip's SHA-256; `README.txt` in the zip
+says the rest.
+
+The Releases page has one more entry, "Runtime source copy": this
+repository's checked copy of the archive the wallet is built from. It is not
+something to install.
+
 ### Capabilities
 
 | Capability | Params | Result |
@@ -70,7 +85,7 @@ Error codes: `bad_request`, `unknown_capability`, `unavailable`, `cancelled`,
 
 ### Wallet features (FortWeb fork)
 
-The wallet in the APK is built from
+The wallet in the APK is built from the `credentials` branch of
 [seriouscoderone/fortweb](https://github.com/seriouscoderone/fortweb), which
 uses the bridge above:
 
@@ -91,6 +106,14 @@ uses the bridge above:
   changes it.
 - **Scan QR code** in *Add Remote Identifier* fills the OOBI URL.
 - If the vault closes in the background, the app returns to its unlock screen.
+- **A new engine underneath.** The `credentials` branch carries the
+  Foundation's draft credential engine. Vaults made with builds before it are
+  not shown: the engine keeps its storage in a new place. Nothing new is on
+  screen for credentials yet.
+- **Keeping the vault.** Each time a vault is opened the wallet asks the
+  browser to keep its storage. On a computer, *Settings* shows whether the
+  browser agreed. Chrome and Edge decide by themselves and usually say no to a
+  site they have just met.
 
 Design and plans: `.internal/specs/` and `.internal/plans/`.
 
