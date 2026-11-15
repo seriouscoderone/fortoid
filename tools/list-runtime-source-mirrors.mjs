@@ -9,7 +9,7 @@
 // Run as a program (node tools/list-runtime-source-mirrors.mjs [FILE]) it reads FILE, by default the committed list,
 // and prints one line for each source: tag, upstream address, SHA-256, separated by tabs. A bad list prints a line
 // beginning "error:" on standard error and exits with status 1.
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -76,8 +76,19 @@ export function readMirrors(text) {
   });
 }
 
+/** Whether this module is the program node was asked to run. Node runs the module at its real path, so a path that
+ * holds a symbolic link is resolved before the two are compared. */
+function isProgram(here) {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === here;
+  } catch {
+    return false;
+  }
+}
+
 const here = fileURLToPath(import.meta.url);
-if (process.argv[1] && path.resolve(process.argv[1]) === here) {
+if (isProgram(here)) {
   const file = process.argv[2] ?? path.join(path.dirname(here), '..', 'config', 'runtime-source-mirror.json');
   try {
     for (const source of readMirrors(readFileSync(file, 'utf8'))) {

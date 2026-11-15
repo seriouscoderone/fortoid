@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -109,5 +109,15 @@ test('the program fails with status 1 and an error line on a bad list', () => {
     assert.equal(run.status, 1);
     assert.equal(run.stdout, '');
     assert.match(run.stderr, /^error: source 0: tag must be/);
+  });
+});
+
+test('the program prints the list when run through a path that holds a symbolic link', () => {
+  withListFile(list(source()), (file) => {
+    const linked = path.join(path.dirname(file), 'linked-root');
+    symlinkSync(ROOT, linked);
+    const printed = execFileSync(process.execPath, [path.join(linked, 'tools', 'list-runtime-source-mirrors.mjs'), file],
+      { encoding: 'utf8' });
+    assert.equal(printed, `some-tag\t${UPSTREAM}\t${SHA}\n`);
   });
 });
