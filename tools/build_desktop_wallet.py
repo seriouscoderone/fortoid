@@ -80,8 +80,26 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
     return sorted(found)
 
 
+def same_file(one: Path, other: Path) -> bool:
+    try:
+        return os.path.samefile(one, other)
+    except OSError:
+        return False
+
+
+def check_output(payload: Path, start_script: Path, readme: Path, output: Path) -> None:
+    """Refuses an output that would be packed by the next build or would replace an input."""
+    place = output.resolve()
+    if any(same_file(folder, payload) for folder in (place, *place.parents)):
+        raise NotAPackage(f"the output {ascii(str(output))} is inside the payload")
+    for label, path in (("start script", start_script), ("readme", readme)):
+        if place == path.resolve() or same_file(output, path):
+            raise NotAPackage(f"the output is the {label}")
+
+
 def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:
     """Writes the zip and returns its SHA-256."""
+    check_output(payload, start_script, readme, output)
     for label, path in (("start script", start_script), ("readme", readme)):
         if not path.is_symlink() and not path.exists():
             raise NotAPackage(f"the {label} {ascii(str(path))} does not exist")

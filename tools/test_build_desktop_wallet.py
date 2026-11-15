@@ -126,6 +126,29 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(err, f"error: the readme {ascii(str(missing))} does not exist\n")
         self.assertFalse(self.output.exists())
 
+    def test_refuses_an_output_inside_the_payload_or_on_an_input(self):
+        def reads_nothing(path):
+            raise AssertionError(f"read {path} before refusing the output")
+
+        cases = [
+            (self.payload / "app" / "out.zip", f"the output {ascii(str(self.payload / 'app' / 'out.zip'))} is inside the payload"),
+            (self.payload / "out.zip", f"the output {ascii(str(self.payload / 'out.zip'))} is inside the payload"),
+            (self.readme, "the output is the readme"),
+            (self.script, "the output is the start script"),
+        ]
+        for output, message in cases:
+            with self.subTest(output=output.name):
+                before = {path: path.read_bytes() for path in self.payload.rglob("*") if path.is_file()}
+                before.update({self.readme: self.readme.read_bytes(), self.script: self.script.read_bytes()})
+                with mock.patch.object(Path, "read_bytes", reads_nothing):
+                    code, out, err = self.run_main(output=output)
+                self.assertEqual((code, out), (1, ""))
+                self.assertEqual(err, f"error: {message}\n")
+                after = {path: path.read_bytes() for path in self.payload.rglob("*") if path.is_file()}
+                after.update({self.readme: self.readme.read_bytes(), self.script: self.script.read_bytes()})
+                self.assertEqual(after, before)
+                self.assertEqual(sorted(os.listdir(self.temp.name)), ["README.txt", "payload", "start_wallet.py"])
+
     def test_refuses_a_link(self):
         link = self.payload / "app" / "leak.txt"
         try:
