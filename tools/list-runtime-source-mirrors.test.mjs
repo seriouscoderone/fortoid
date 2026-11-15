@@ -35,6 +35,7 @@ test('refuses a source that is not exact', () => {
     [source({ tag: 'Some-Tag' }), /tag must be/],
     [source({ tag: 'a/b' }), /tag must be/],
     [source({ tag: '' }), /tag must be/],
+    [source({ tag: 'a'.repeat(101) }), /tag must be/],
     [source({ tag: 'a..b' }), /tag must be/],
     [source({ tag: 'a.' }), /tag must be/],
     [source({ tag: 'a.lock' }), /tag must be/],
@@ -48,12 +49,27 @@ test('refuses a source that is not exact', () => {
     [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz?' }), /upstream must be/],
     [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz#' }), /upstream must be/],
     [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz?#' }), /upstream must be/],
+    [source({ upstream: 'https://github.com:8443/o/r/releases/download/t/runtime-source.tar.gz' }), /upstream must be/],
+    [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz#x' }), /upstream must be/],
+    [source({ upstream: 'https://GitHub.com/o/r/releases/download/t/runtime-source.tar.gz' }), /upstream must be/],
+    [source({ upstream: 'https://github.com:443/o/r/releases/download/t/runtime-source.tar.gz' }), /upstream must be/],
     [source({ upstream: 'not an address' }), /not an address/],
     [source({ upstream: 7 }), /not an address/],
   ];
   for (const [entry, message] of bad) {
     assert.throws(() => readMirrors(list(entry)), message, JSON.stringify(entry));
   }
+});
+
+test('refuses a source that is not an object', () => {
+  for (const entry of ['some-tag', 7, null, [source()]]) {
+    assert.throws(() => readMirrors(list(entry)), /exactly tag, upstream and sha256/, JSON.stringify(entry));
+  }
+});
+
+test('reads a tag of 100 characters', () => {
+  const tag = 'a'.repeat(100);
+  assert.deepEqual(readMirrors(list(source({ tag }))), [{ tag, upstream: UPSTREAM, sha256: SHA }]);
 });
 
 test('refuses a tag listed twice', () => {
