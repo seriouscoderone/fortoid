@@ -51,6 +51,9 @@ jobs:
       - name: Run runtime source mirror script tests
         run: node --test tools/mirror-runtime-sources.test.mjs
 
+      - name: Run desktop wallet builder tests
+        run: python3 -m unittest tools/test_build_desktop_wallet.py
+
   package-apk-integrity:
     name: Android package and APK integrity
     runs-on: ubuntu-latest
