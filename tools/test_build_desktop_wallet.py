@@ -61,6 +61,11 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(archive.read("fort-wallet/start-wallet.py"), b"print('start')\n")
             self.assertEqual(archive.read("fort-wallet/wheels/keri.whl"), b"PK\x03\x04")
             self.assertIsNone(archive.testzip())
+            for info in archive.infolist():
+                with self.subTest(entry=info.filename):
+                    self.assertEqual(info.date_time, (2026, 1, 1, 0, 0, 0))
+                    self.assertEqual(info.external_attr, 0o100644 << 16)
+                    self.assertEqual(info.compress_type, zipfile.ZIP_DEFLATED)
 
     def test_deflates_every_entry_at_level_9(self):
         words = "the wallet keeps a vault in the browser under one address and asks it to keep its storage".split()
@@ -169,7 +174,7 @@ class BuildTest(unittest.TestCase):
 
     @unittest.skipIf(sys.platform == "win32", "Windows can make no such file name (c: there is a drive)")
     def test_refuses_a_file_name_an_unzip_program_could_misread(self):
-        for odd in ("a\\b.txt", "c:d.txt", "e\x01f.txt", "g\x7fh.txt"):
+        for odd in ("a\\b.txt", "c:d.txt", "e\x01f.txt", "g\x7fh.txt", "i\nj.txt", "k\x1fl.txt"):
             with self.subTest(name=odd):
                 path = self.payload / "app" / odd
                 try:
