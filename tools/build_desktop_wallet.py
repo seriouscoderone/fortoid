@@ -106,6 +106,12 @@ def check_output(payload: Path, start_script: Path, readme: Path, output: Path) 
     for label, path in (("start script", start_script), ("readme", readme)):
         if place == path.resolve() or same_file(output, path):
             raise NotAPackage(f"the output is the {label}")
+    try:
+        kind = output.lstat().st_mode  # a link is not followed: it would be replaced, not written through
+    except FileNotFoundError:
+        return
+    if not stat.S_ISREG(kind):
+        raise NotAPackage(f"the output {ascii(str(output))} exists and is not a plain file")
 
 
 def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:

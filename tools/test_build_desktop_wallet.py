@@ -170,6 +170,40 @@ class BuildTest(unittest.TestCase):
                 self.assertEqual(err.getvalue(), f"error: the output {ascii(shown)} must be a file's name\n")
                 self.assertEqual(sorted(os.listdir(self.temp.name)), ["README.txt", "payload", "start_wallet.py"])
 
+    def test_refuses_an_output_that_exists_and_is_not_a_plain_file(self):
+        def reads_nothing(path):
+            raise AssertionError(f"read {path} before refusing the output")
+
+        root = Path(self.temp.name)
+        target = root / "target.zip"
+        target.write_bytes(b"older")
+
+        def a_link(output):
+            try:
+                output.symlink_to(target)
+            except OSError:
+                self.skipTest("this system makes no symbolic links")
+
+        def a_fifo(output):
+            if not hasattr(os, "mkfifo"):
+                self.skipTest("this system makes no FIFO")
+            try:
+                os.mkfifo(output)
+            except OSError:
+                self.skipTest("this system makes no FIFO")
+
+        for case, make in (("a link", a_link), ("a FIFO", a_fifo), ("a folder", Path.mkdir)):
+            with self.subTest(case=case):
+                output = root / f"{case.split()[1]}.zip"
+                make(output)
+                with mock.patch.object(Path, "read_bytes", reads_nothing):
+                    code, out, err = self.run_main(output=output)
+                self.assertEqual((code, out), (1, ""))
+                self.assertEqual(err, f"error: the output {ascii(str(output))} exists and is not a plain file\n")
+                self.assertTrue(output.is_symlink() or not output.is_file())
+                self.assertEqual(target.read_bytes(), b"older")
+                self.assertFalse(any(name.endswith(".partial") for name in os.listdir(root)))
+
     def test_refuses_a_link(self):
         link = self.payload / "app" / "leak.txt"
         try:
