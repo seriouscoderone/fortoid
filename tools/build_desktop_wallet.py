@@ -98,6 +98,8 @@ def same_file(one: Path, other: Path) -> bool:
 
 def check_output(payload: Path, start_script: Path, readme: Path, output: Path) -> None:
     """Refuses an output that would be packed by the next build or would replace an input."""
+    if not output.name:
+        raise NotAPackage(f"the output {ascii(str(output))} must be a file's name")
     place = output.resolve()
     if any(same_file(folder, payload) for folder in (place, *place.parents)):
         raise NotAPackage(f"the output {ascii(str(output))} is inside the payload")

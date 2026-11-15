@@ -155,6 +155,21 @@ class BuildTest(unittest.TestCase):
                 self.assertEqual(after, before)
                 self.assertEqual(sorted(os.listdir(self.temp.name)), ["README.txt", "payload", "start_wallet.py"])
 
+    def test_refuses_an_output_that_names_no_file(self):
+        def reads_nothing(path):
+            raise AssertionError(f"read {path} before refusing the output")
+
+        for given, shown in ((".", "."), ("", "."), (os.sep, os.sep)):
+            with self.subTest(output=given):
+                out, err = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
+                        mock.patch.object(Path, "read_bytes", reads_nothing):
+                    code = tool.main(["--payload", str(self.payload), "--start-script", str(self.script),
+                                      "--readme", str(self.readme), "--output", given])
+                self.assertEqual((code, out.getvalue()), (1, ""))
+                self.assertEqual(err.getvalue(), f"error: the output {ascii(shown)} must be a file's name\n")
+                self.assertEqual(sorted(os.listdir(self.temp.name)), ["README.txt", "payload", "start_wallet.py"])
+
     def test_refuses_a_link(self):
         link = self.payload / "app" / "leak.txt"
         try:
