@@ -204,6 +204,30 @@ class BuildTest(unittest.TestCase):
                 self.assertEqual(target.read_bytes(), b"older")
                 self.assertFalse(any(name.endswith(".partial") for name in os.listdir(root)))
 
+    def test_refuses_a_looping_link_plainly(self):
+        root = Path(self.temp.name)
+        loop, one, two = root / "loop", root / "one", root / "two"
+        try:
+            loop.symlink_to(loop)
+            one.symlink_to(two)
+            two.symlink_to(one)
+        except OSError:
+            self.skipTest("this system makes no symbolic links")
+        before = sorted(os.listdir(root))
+        for label, given in (("start script", {"script": loop}), ("start script", {"script": one}),
+                             ("readme", {"readme": loop}), ("readme", {"readme": two})):
+            with self.subTest(label=label, link=next(iter(given.values())).name):
+                code, out, err = self.run_main(**given)
+                self.assertEqual((code, out, err), (1, "", f"error: the {label} is not a plain file\n"))
+                self.assertEqual(sorted(os.listdir(root)), before)
+        for output in (loop, one, loop / "out.zip", one / "out.zip"):
+            with self.subTest(output=output.relative_to(root).as_posix()):
+                code, out, err = self.run_main(output=output)
+                self.assertEqual((code, out), (1, ""))
+                self.assertRegex(err, r"\Aerror: [^\n]+\n\Z")
+                self.assertEqual(sorted(os.listdir(root)), before)
+                self.assertTrue(loop.is_symlink() and one.is_symlink())
+
     def test_refuses_a_link(self):
         link = self.payload / "app" / "leak.txt"
         try:

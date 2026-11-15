@@ -100,11 +100,12 @@ def check_output(payload: Path, start_script: Path, readme: Path, output: Path) 
     """Refuses an output that would be packed by the next build or would replace an input."""
     if not output.name:
         raise NotAPackage(f"the output {ascii(str(output))} must be a file's name")
-    place = output.resolve()
+    # os.path.realpath, not Path.resolve: on Python 3.11 and 3.12 resolve() raises RuntimeError on a looping link.
+    place = Path(os.path.realpath(output))
     if any(same_file(folder, payload) for folder in (place, *place.parents)):
         raise NotAPackage(f"the output {ascii(str(output))} is inside the payload")
     for label, path in (("start script", start_script), ("readme", readme)):
-        if place == path.resolve() or same_file(output, path):
+        if place == Path(os.path.realpath(path)) or same_file(output, path):
             raise NotAPackage(f"the output is the {label}")
     try:
         kind = output.lstat().st_mode  # a link is not followed: it would be replaced, not written through
