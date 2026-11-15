@@ -21,6 +21,7 @@ on:
     paths:
       - config/runtime-source-mirror.json
       - tools/list-runtime-source-mirrors.mjs
+      - scripts/mirror-runtime-sources.sh
       - .github/workflows/runtime-source-mirror.yml
   workflow_dispatch:
 

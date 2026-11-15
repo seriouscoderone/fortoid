@@ -372,3 +372,21 @@ test('a release holding only files with similar names: the archive is uploaded, 
   assert.equal(readFileSync(path.join(release, 'old-runtime-source.tar.gz'), 'utf8'), BYTES);
   assert.match(output, new RegExp(`^copy made: ${TAG}$`, 'm'));
 }));
+
+test('the workflow runs when the script, its list, the list tool or the workflow itself changes', () => {
+  const lines = readFileSync(path.join(ROOT, '.github', 'workflows', 'runtime-source-mirror.yml'), 'utf8').split('\n');
+  const start = lines.findIndex((line) => line.trim() === 'paths:');
+  assert.ok(start >= 0, 'the workflow has a paths trigger');
+  const indent = lines[start].search(/\S/);
+  const paths = [];
+  for (const line of lines.slice(start + 1)) {
+    if (line.search(/\S/) <= indent) break;
+    paths.push(line.trim().replace(/^- /, ''));
+  }
+  assert.deepEqual(paths.sort(), [
+    '.github/workflows/runtime-source-mirror.yml',
+    'config/runtime-source-mirror.json',
+    'scripts/mirror-runtime-sources.sh',
+    'tools/list-runtime-source-mirrors.mjs',
+  ]);
+});
