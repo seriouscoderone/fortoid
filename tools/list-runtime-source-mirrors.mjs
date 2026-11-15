@@ -55,8 +55,10 @@ export function readMirrors(text) {
     if (!plain(source) || !sameKeys(source, ['tag', 'upstream', 'sha256'])) {
       throw new Error(`source ${index}: must have exactly tag, upstream and sha256`);
     }
-    if (typeof source.tag !== 'string' || !TAG.test(source.tag)) {
-      throw new Error(`source ${index}: tag must be lower-case letters, digits, dots and hyphens`);
+    if (typeof source.tag !== 'string' || !TAG.test(source.tag) || source.tag.includes('..')
+        || source.tag.endsWith('.') || source.tag.endsWith('.lock')) {
+      throw new Error(`source ${index}: tag must be lower-case letters, digits, dots and hyphens, `
+        + 'with no ".." and not ending in "." or ".lock"');
     }
     if (tags.has(source.tag)) {
       throw new Error(`source ${index}: tag ${source.tag} is listed twice`);
