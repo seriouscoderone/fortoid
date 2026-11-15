@@ -359,3 +359,16 @@ test('gh failing to upload the copy stops the run with a sentence naming the tag
   assert.ok(output.includes(message), `gh's own message stays: ${output}`);
   assert.match(output, new RegExp(`^::error::gh could not upload the copy to release ${TAG}$`, 'm'));
 }));
+
+test('a release holding only files with similar names: the archive is uploaded, the others left alone', () => inWorld((w) => {
+  w.release({ 'runtime-source.tar.gz.sig': 'signature\n', 'old-runtime-source.tar.gz': BYTES });
+  const { status, output } = w.run();
+  assert.equal(status, 0, output);
+  assert.deepEqual(w.ghCalls('download'), [], 'no other file is taken for the archive');
+  assert.equal(w.ghCalls('upload').length, 1);
+  assert.equal(w.asset(), BYTES);
+  const release = path.join(w.state, 'releases', TAG);
+  assert.equal(readFileSync(path.join(release, 'runtime-source.tar.gz.sig'), 'utf8'), 'signature\n');
+  assert.equal(readFileSync(path.join(release, 'old-runtime-source.tar.gz'), 'utf8'), BYTES);
+  assert.match(output, new RegExp(`^copy made: ${TAG}$`, 'm'));
+}));
