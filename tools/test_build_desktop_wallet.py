@@ -166,6 +166,18 @@ class BuildTest(unittest.TestCase):
                 self.output.unlink()
                 path.unlink()
 
+    def test_refuses_a_file_name_that_is_not_utf8(self):
+        try:
+            with open(os.fsencode(self.payload / "app") + b"/bad\xff\xfe.txt", "wb") as file:
+                file.write(b"x")
+        except (OSError, TypeError, ValueError):
+            self.skipTest("this system cannot hold a file name that is not UTF-8")
+        self.output.write_bytes(b"older")
+        code, out, err = self.run_main()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, "error: the file name 'app/bad\\udcff\\udcfe.txt' is not allowed\n")
+        self.assertEqual(self.output.read_bytes(), b"older")
+
     def test_refuses_a_folder_that_cannot_be_listed(self):
         real_scandir = os.scandir
         locked = self.payload / "app" / "runtime"

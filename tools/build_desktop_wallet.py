@@ -69,7 +69,9 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
                 raise NotAPackage(f"{path.relative_to(payload).as_posix()} is not a plain file")
             inside = path.relative_to(payload).as_posix()
             # An unzip program on Windows reads \\ as a separator (and : as a drive), so such a name could land elsewhere.
-            if any(char in "\\:" or ord(char) < 0x20 or ord(char) == 0x7F for char in inside):
+            # A name that is not UTF-8 reaches Python with surrogates, which a zip cannot hold.
+            if any(char in "\\:" or ord(char) < 0x20 or ord(char) == 0x7F or 0xD800 <= ord(char) <= 0xDFFF
+                   for char in inside):
                 raise NotAPackage(f"the file name {ascii(inside)} is not allowed")
             found.append((inside, path))
     return sorted(found)
