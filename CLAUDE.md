@@ -106,8 +106,8 @@ Tests: Playwright must use the container's Chromium, so create an uncommitted
 `npm run test:e2e:prepared-runtime -- -c playwright.local.config.ts --trace off`.
 Also: `npm run typecheck`, `python3 -m unittest python.test_vaulting`,
 `npm run test:runtime-publication-workflow`. After a build, also
-`python3 -m unittest python/test_verify_runtime_tree.py
-python/test_start_wallet.py`. The workflow's canary
+`python3 -m unittest python/test_verify_runtime_tree.py python/test_start_wallet.py`.
+The workflow's canary
 (`playwright/runtime-canary.spec.ts`) passes only with the headless shell, the
 browser the workflow installs (in this container under
 `/opt/pw-browsers/chromium_headless_shell-*`): the full Chromium also asks for
