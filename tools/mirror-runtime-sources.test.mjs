@@ -1,0 +1,218 @@
+// Tests for scripts/mirror-runtime-sources.sh, the copying logic of the workflow runtime-source-mirror.yml.
+//
+// The script runs with stand-ins for gh and curl put first on PATH. The stand-ins keep the releases of a made-up
+// repository as folders under a state folder, serve the "upstream" address and the copies' public addresses from
+// files there, and log every call as one JSON line. Nothing here talks to GitHub.
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SCRIPT = path.join(ROOT, 'scripts', 'mirror-runtime-sources.sh');
+const REPOSITORY = 'example-owner/example-repo';
+const COMMIT = '0123456789abcdef0123456789abcdef01234567';
+const TOKEN = 'token-that-must-never-be-printed';
+const TAG = 'runtime-source-example-1';
+const UPSTREAM = `https://github.com/example-foundation/fortweb/releases/download/${TAG}/runtime-source.tar.gz`;
+const PUBLIC = `https://github.com/${REPOSITORY}/releases/download/${TAG}/runtime-source.tar.gz`;
+const BYTES = 'made-up runtime source archive\n';
+const SHA = createHash('sha256').update(BYTES).digest('hex');
+
+const GH = `#!/usr/bin/env node
+const fs = require('node:fs');
+const path = require('node:path');
+const state = process.env.STANDIN_STATE;
+const args = process.argv.slice(2);
+fs.appendFileSync(path.join(state, 'calls.log'), JSON.stringify(['gh', ...args]) + '\\n');
+const fail = (message, status = 1) => { process.stderr.write(message + '\\n'); process.exit(status); };
+if (args[0] !== 'release') fail('stand-in gh: unknown command ' + args.join(' '), 2);
+const [, command, tag, ...rest] = args;
+const failure = path.join(state, 'fail-' + command);
+if (fs.existsSync(failure)) fail(fs.readFileSync(failure, 'utf8').trim());
+const release = path.join(state, 'releases', tag);
+const option = (name) => { const at = rest.indexOf(name); return at < 0 ? undefined : rest[at + 1]; };
+if (command === 'view') {
+  if (!fs.existsSync(release)) fail('release not found');
+  for (const name of fs.readdirSync(release)) process.stdout.write(name + '\\n');
+} else if (command === 'download') {
+  if (!fs.existsSync(release)) fail('release not found');
+  const file = path.join(release, option('--pattern'));
+  if (!fs.existsSync(file)) fail('no assets match the file pattern');
+  fs.copyFileSync(file, path.join(option('--dir'), option('--pattern')));
+} else if (command === 'create') {
+  if (fs.existsSync(release)) fail('a release with the same tag name already exists: ' + tag);
+  fs.mkdirSync(release, { recursive: true });
+  fs.copyFileSync(rest[0], path.join(release, path.basename(rest[0])));
+} else if (command === 'upload') {
+  if (!fs.existsSync(release)) fail('release not found');
+  const target = path.join(release, path.basename(rest[0]));
+  if (fs.existsSync(target) && !rest.includes('--clobber')) fail('asset under the same name already exists');
+  fs.copyFileSync(rest[0], target);
+} else {
+  fail('stand-in gh: unknown command ' + args.join(' '), 2);
+}
+`;
+
+const CURL = `#!/usr/bin/env node
+const fs = require('node:fs');
+const path = require('node:path');
+const state = process.env.STANDIN_STATE;
+const args = process.argv.slice(2);
+fs.appendFileSync(path.join(state, 'calls.log'), JSON.stringify(['curl', ...args]) + '\\n');
+const missing = () => { process.stderr.write('curl: (22) The requested URL returned error: 404\\n'); process.exit(22); };
+const out = args[args.indexOf('--output') + 1];
+const url = args[args.length - 1];
+const prefix = 'https://github.com/' + process.env.GITHUB_REPOSITORY + '/releases/download/';
+if (url.startsWith(prefix)) {
+  const [tag, name] = url.slice(prefix.length).split('/');
+  const misses = path.join(state, 'public-misses');
+  if (fs.existsSync(misses)) {
+    const left = Number(fs.readFileSync(misses, 'utf8'));
+    if (left > 0) { fs.writeFileSync(misses, String(left - 1)); missing(); }
+  }
+  const override = path.join(state, 'public-bytes');
+  const file = fs.existsSync(override) ? override : path.join(state, 'releases', tag, name);
+  if (!fs.existsSync(file)) missing();
+  fs.copyFileSync(file, out);
+} else if (url === fs.readFileSync(path.join(state, 'upstream-url'), 'utf8')) {
+  fs.copyFileSync(path.join(state, 'upstream-bytes'), out);
+} else {
+  missing();
+}
+`;
+
+/** A fresh made-up world: stand-ins on PATH, a list of one source, the upstream archive and no releases. */
+function world() {
+  const dir = mkdtempSync(path.join(tmpdir(), 'fortoid-mirror-'));
+  const bin = path.join(dir, 'bin');
+  const state = path.join(dir, 'state');
+  mkdirSync(bin);
+  mkdirSync(path.join(state, 'releases'), { recursive: true });
+  for (const [name, text] of [['gh', GH], ['curl', CURL]]) {
+    writeFileSync(path.join(bin, name), text);
+    chmodSync(path.join(bin, name), 0o755);
+  }
+  const list = path.join(dir, 'list.json');
+  writeFileSync(list, JSON.stringify({
+    schema: 'fortoid.runtime-source-mirror.v1',
+    sources: [{ tag: TAG, upstream: UPSTREAM, sha256: SHA }],
+  }));
+  writeFileSync(path.join(state, 'upstream-url'), UPSTREAM);
+  writeFileSync(path.join(state, 'upstream-bytes'), BYTES);
+  writeFileSync(path.join(state, 'calls.log'), '');
+  const release = (files = {}) => {
+    mkdirSync(path.join(state, 'releases', TAG));
+    for (const [name, text] of Object.entries(files)) writeFileSync(path.join(state, 'releases', TAG, name), text);
+  };
+  const run = () => {
+    const result = spawnSync('bash', [SCRIPT], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: {
+        PATH: `${bin}:${path.dirname(process.execPath)}:/usr/bin:/bin`,
+        HOME: dir,
+        TMPDIR: dir,
+        GITHUB_REPOSITORY: REPOSITORY,
+        GITHUB_SHA: COMMIT,
+        GH_TOKEN: TOKEN,
+        MIRROR_LIST: list,
+        MIRROR_RETRY_PAUSE: '0',
+        STANDIN_STATE: state,
+      },
+    });
+    const output = result.stdout + result.stderr;
+    assert.ok(!output.includes(TOKEN), 'the token is never printed');
+    return { status: result.status, output };
+  };
+  const calls = () => readFileSync(path.join(state, 'calls.log'), 'utf8').split('\n').filter(Boolean)
+    .map((line) => JSON.parse(line));
+  const ghCalls = (command) => calls().filter((call) => call[0] === 'gh' && call[2] === command);
+  const asset = () => {
+    const file = path.join(state, 'releases', TAG, 'runtime-source.tar.gz');
+    return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+  };
+  const done = () => rmSync(dir, { recursive: true, force: true });
+  return { state, release, run, calls, ghCalls, asset, done };
+}
+
+function inWorld(use) {
+  const w = world();
+  try {
+    use(w);
+  } finally {
+    w.done();
+  }
+}
+
+function assertNothingWritten(w) {
+  assert.deepEqual(w.ghCalls('create'), []);
+  assert.deepEqual(w.ghCalls('upload'), []);
+  for (const call of w.calls()) assert.ok(!call.includes('--clobber'), JSON.stringify(call));
+}
+
+test('no release yet: the checked archive becomes a new prerelease', () => inWorld((w) => {
+  const { status, output } = w.run();
+  assert.equal(status, 0, output);
+  assert.ok(w.calls().some((call) => call[0] === 'curl' && call.at(-1) === UPSTREAM), 'fetched from upstream');
+  const creates = w.ghCalls('create');
+  assert.equal(creates.length, 1);
+  const [, , , tag, file, ...flags] = creates[0];
+  assert.equal(tag, TAG);
+  assert.equal(path.basename(file), 'runtime-source.tar.gz');
+  assert.deepEqual(flags, [
+    '--prerelease',
+    '--target', COMMIT,
+    '--title', `Runtime source copy: ${TAG}`,
+    '--notes', `A copy of the runtime source the wallet is built from, taken from ${UPSTREAM} and checked against `
+      + `SHA-256 ${SHA}. The builds of this repository read this copy.`,
+  ]);
+  assert.equal(w.asset(), BYTES);
+  assert.deepEqual(w.ghCalls('upload'), []);
+  assert.match(output, new RegExp(`^copy made: ${TAG}$`, 'm'));
+}));
+
+test('a correct published copy: nothing is created or uploaded', () => inWorld((w) => {
+  w.release({ 'runtime-source.tar.gz': BYTES });
+  const { status, output } = w.run();
+  assert.equal(status, 0, output);
+  assertNothingWritten(w);
+  assert.ok(!w.calls().some((call) => call[0] === 'curl' && call.at(-1) === UPSTREAM), 'upstream not fetched');
+  assert.match(output, new RegExp(`^copy present and correct: ${TAG}$`, 'm'));
+}));
+
+test('a copy whose bytes do not match the digest fails and is not replaced', () => inWorld((w) => {
+  w.release({ 'runtime-source.tar.gz': 'other bytes\n' });
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assertNothingWritten(w);
+  assert.equal(w.asset(), 'other bytes\n');
+  assert.match(output, /does not match its digest/);
+}));
+
+test('a release without the file: the checked archive is uploaded to it', () => inWorld((w) => {
+  w.release();
+  const { status, output } = w.run();
+  assert.equal(status, 0, output);
+  assert.deepEqual(w.ghCalls('create'), []);
+  const uploads = w.ghCalls('upload');
+  assert.equal(uploads.length, 1);
+  assert.equal(uploads[0][3], TAG);
+  assert.equal(path.basename(uploads[0][4]), 'runtime-source.tar.gz');
+  assert.equal(uploads[0].length, 5, `no other argument: ${JSON.stringify(uploads[0])}`);
+  assert.equal(w.asset(), BYTES);
+  assert.match(output, new RegExp(`^copy made: ${TAG}$`, 'm'));
+}));
+
+test('wrong bytes from upstream: nothing is created', () => inWorld((w) => {
+  writeFileSync(path.join(w.state, 'upstream-bytes'), 'tampered\n');
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assertNothingWritten(w);
+  assert.equal(w.asset(), undefined);
+  assert.match(output, /does not match its digest/);
+}));
