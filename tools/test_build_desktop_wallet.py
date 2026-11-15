@@ -76,6 +76,16 @@ class BuildTest(unittest.TestCase):
         with self.assertRaisesRegex(tool.NotAPackage, "not a plain file"):
             tool.build(self.payload, self.script, self.readme, self.output)
 
+    def test_refuses_a_link_to_a_folder(self):
+        link = self.payload / "app" / "linked"
+        try:
+            link.symlink_to(self.payload / "vendor", target_is_directory=True)
+        except OSError:
+            self.skipTest("this system makes no symbolic links")
+        with self.assertRaisesRegex(tool.NotAPackage, "app/linked is not a plain file"):
+            tool.build(self.payload, self.script, self.readme, self.output)
+        self.assertFalse(self.output.exists())
+
     def test_the_program_prints_the_digest_and_fails_plainly(self):
         self.assertEqual(tool.main(["--payload", str(self.payload), "--start-script", str(self.script),
                                     "--readme", str(self.readme), "--output", str(self.output)]), 0)

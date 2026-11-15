@@ -35,7 +35,7 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
         top = payload / name
         if top.is_symlink() or not top.exists():
             raise NotAPackage(f"the payload has no {name}")
-        files = [top] if top.is_file() else sorted(path for path in top.rglob("*") if not path.is_dir())
+        files = [top] if top.is_file() else sorted(path for path in top.rglob("*") if path.is_symlink() or not path.is_dir())
         for path in files:
             if path.is_symlink() or not path.is_file():
                 raise NotAPackage(f"{path.relative_to(payload).as_posix()} is not a plain file")
