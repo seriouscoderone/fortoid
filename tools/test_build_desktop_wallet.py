@@ -103,6 +103,41 @@ class BuildTest(unittest.TestCase):
                 tool.build(self.payload, self.script, bad, self.output)
         self.assertFalse(self.output.exists())
 
+    def test_refuses_an_entry_of_the_wrong_kind_or_an_empty_folder(self):
+        def refused(message):
+            with self.assertRaisesRegex(tool.NotAPackage, message):
+                tool.build(self.payload, self.script, self.readme, self.output)
+            self.assertFalse(self.output.exists())
+
+        app = self.payload / "app"
+        moved = self.payload / "app-moved"
+        app.rename(moved)
+        app.write_text("not a folder")
+        refused("app is not a folder")
+        app.unlink()
+        moved.rename(app)
+
+        toml = self.payload / "pyscript-ci.toml"
+        text = toml.read_text()
+        toml.unlink()
+        toml.mkdir()
+        refused("pyscript-ci.toml is not a file")
+        toml.rmdir()
+        toml.write_text(text)
+
+        for name in ("vendor", "wheels"):
+            folder = self.payload / name
+            held = folder.rename(self.payload / (name + "-held"))
+            folder.mkdir()
+            refused(f"{name} holds no file")
+            (folder / "empty" / "deeper").mkdir(parents=True)
+            refused(f"{name} holds no file")
+            for leftover in sorted(folder.rglob("*"), reverse=True):
+                leftover.rmdir()
+            folder.rmdir()
+            held.rename(folder)
+        tool.build(self.payload, self.script, self.readme, self.output)
+
     def test_the_program_prints_the_digest_and_fails_plainly(self):
         self.assertEqual(tool.main(["--payload", str(self.payload), "--start-script", str(self.script),
                                     "--readme", str(self.readme), "--output", str(self.output)]), 0)

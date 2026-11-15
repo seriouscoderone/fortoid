@@ -21,6 +21,7 @@ from pathlib import Path
 FOLDER = "fort-wallet"
 # What a wallet package holds at its top (scripts/start_wallet.py in the wallet's repository serves exactly these).
 PACKAGE = ("app", "vendor", "wheels", "pyscript-ci.toml", "runtime-closure.json")
+FOLDERS = ("app", "vendor", "wheels")  # the other entries are files
 STAMP = (2026, 1, 1, 0, 0, 0)  # a fixed time, so the zip does not change from one build to the next
 
 
@@ -35,7 +36,16 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
         top = payload / name
         if top.is_symlink() or not top.exists():
             raise NotAPackage(f"the payload has no {name}")
-        files = [top] if top.is_file() else sorted(path for path in top.rglob("*") if path.is_symlink() or not path.is_dir())
+        if name in FOLDERS:
+            if not top.is_dir():
+                raise NotAPackage(f"{name} is not a folder")
+            files = sorted(path for path in top.rglob("*") if path.is_symlink() or not path.is_dir())
+            if not files:
+                raise NotAPackage(f"{name} holds no file")
+        else:
+            if not top.is_file():
+                raise NotAPackage(f"{name} is not a file")
+            files = [top]
         for path in files:
             if path.is_symlink() or not path.is_file():
                 raise NotAPackage(f"{path.relative_to(payload).as_posix()} is not a plain file")
