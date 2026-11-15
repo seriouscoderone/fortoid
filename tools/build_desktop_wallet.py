@@ -100,7 +100,7 @@ def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:
                 info = zipfile.ZipInfo(f"{FOLDER}/{name}", date_time=STAMP)
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = (stat.S_IFREG | 0o644) << 16
-                archive.writestr(info, data)
+                archive.writestr(info, data, compresslevel=9)  # a ZipInfo's own level is unset otherwise
         digest = hashlib.sha256(partial.read_bytes()).hexdigest()
         os.replace(partial, output)
     except BaseException:

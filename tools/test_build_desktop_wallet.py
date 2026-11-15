@@ -4,10 +4,12 @@ import hashlib
 import importlib.util
 import io
 import os
+import random
 import sys
 import tempfile
 import unittest
 import zipfile
+import zlib
 from pathlib import Path
 from unittest import mock
 
@@ -59,6 +61,23 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(archive.read("fort-wallet/start-wallet.py"), b"print('start')\n")
             self.assertEqual(archive.read("fort-wallet/wheels/keri.whl"), b"PK\x03\x04")
             self.assertIsNone(archive.testzip())
+
+    def test_deflates_every_entry_at_level_9(self):
+        words = "the wallet keeps a vault in the browser under one address and asks it to keep its storage".split()
+        rng = random.Random(7)
+        text = " ".join(rng.choice(words) + str(rng.randrange(100)) for _ in range(20000)).encode()
+        (self.payload / "app" / "words.txt").write_bytes(text)
+        tool.build(self.payload, self.script, self.readme, self.output)
+
+        def deflated(data, level):
+            compressor = zlib.compressobj(level, zlib.DEFLATED, -15)
+            return len(compressor.compress(data) + compressor.flush())
+
+        self.assertNotEqual(deflated(text, 9), deflated(text, 6))  # so the text tells the two levels apart
+        with zipfile.ZipFile(self.output) as archive:
+            for info in archive.infolist():
+                with self.subTest(entry=info.filename):
+                    self.assertEqual(info.compress_size, deflated(archive.read(info), 9))
 
     def test_is_the_same_zip_every_time(self):
         first = tool.build(self.payload, self.script, self.readme, self.output)
