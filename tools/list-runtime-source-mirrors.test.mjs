@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -80,4 +81,33 @@ test('the committed list reads, and the program prints it', () => {
   const sources = readMirrors(readFileSync(path.join(ROOT, 'config', 'runtime-source-mirror.json'), 'utf8'));
   const printed = execFileSync(process.execPath, [path.join(ROOT, 'tools', 'list-runtime-source-mirrors.mjs')], { encoding: 'utf8' });
   assert.equal(printed, sources.map((item) => `${item.tag}\t${item.upstream}\t${item.sha256}\n`).join(''));
+});
+
+const PROGRAM = path.join(ROOT, 'tools', 'list-runtime-source-mirrors.mjs');
+
+function withListFile(text, use) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'fortoid-mirror-list-'));
+  try {
+    const file = path.join(dir, 'list.json');
+    writeFileSync(file, text);
+    return use(file);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('the program prints the list named by its argument', () => {
+  withListFile(list(source(), source({ tag: 'other-1.0' })), (file) => {
+    const printed = execFileSync(process.execPath, [PROGRAM, file], { encoding: 'utf8' });
+    assert.equal(printed, `some-tag\t${UPSTREAM}\t${SHA}\nother-1.0\t${UPSTREAM}\t${SHA}\n`);
+  });
+});
+
+test('the program fails with status 1 and an error line on a bad list', () => {
+  withListFile(list(source({ tag: 'Bad' })), (file) => {
+    const run = spawnSync(process.execPath, [PROGRAM, file], { encoding: 'utf8' });
+    assert.equal(run.status, 1);
+    assert.equal(run.stdout, '');
+    assert.match(run.stderr, /^error: source 0: tag must be/);
+  });
 });

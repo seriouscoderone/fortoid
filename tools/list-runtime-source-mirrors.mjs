@@ -6,7 +6,9 @@
 // archive to a release of this repository, after checking it against the digest given here, and the builds read
 // that copy.
 //
-// Run as a program it prints one line for each source: tag, upstream address, SHA-256, separated by tabs.
+// Run as a program (node tools/list-runtime-source-mirrors.mjs [FILE]) it reads FILE, by default the committed list,
+// and prints one line for each source: tag, upstream address, SHA-256, separated by tabs. A bad list prints a line
+// beginning "error:" on standard error and exits with status 1.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,7 +78,7 @@ export function readMirrors(text) {
 
 const here = fileURLToPath(import.meta.url);
 if (process.argv[1] && path.resolve(process.argv[1]) === here) {
-  const file = path.join(path.dirname(here), '..', 'config', 'runtime-source-mirror.json');
+  const file = process.argv[2] ?? path.join(path.dirname(here), '..', 'config', 'runtime-source-mirror.json');
   try {
     for (const source of readMirrors(readFileSync(file, 'utf8'))) {
       process.stdout.write(`${source.tag}\t${source.upstream}\t${source.sha256}\n`);
