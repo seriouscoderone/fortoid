@@ -1,5 +1,6 @@
 """tools/build_desktop_wallet.py: the zip a person downloads to run the wallet on a computer."""
 import contextlib
+import errno
 import hashlib
 import importlib.util
 import io
@@ -416,6 +417,40 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(err, "error: 'app/locked/\\xe9\\u202e\\u0436.js' cannot be looked at: Permission denied\n")
         self.assertTrue(err.isascii())
         self.assertFalse(self.output.exists())
+
+    def test_a_look_that_fails_at_either_place_for_any_reason_is_refused_plainly(self):
+        # A file is looked at twice: in the walk, and again when it is checked to be a plain file.
+        locked = self.payload / "app" / "locked"
+        locked.mkdir()
+        unseen = locked / "é‮ж.js"
+        unseen.write_text("x")
+        real_stat, real_lstat = os.stat, os.lstat
+        failures = (
+            ("Permission denied", lambda path: PermissionError(errno.EACCES, "Permission denied", path)),
+            ("Input/output error", lambda path: OSError(errno.EIO, "Input/output error", path)),
+        )
+        for failing_look, place in ((1, "in the walk"), (2, "at the plain-file check")):
+            for reason, failure in failures:
+                with self.subTest(place=place, reason=reason):
+                    looks = []
+
+                    def refused(real):
+                        def look(path, *args, **kwargs):
+                            if os.fspath(path) == str(unseen):
+                                looks.append(path)
+                                if len(looks) == failing_look:
+                                    raise failure(str(path))
+                            return real(path, *args, **kwargs)
+                        return look
+
+                    with mock.patch.object(os, "stat", refused(real_stat)), \
+                            mock.patch.object(os, "lstat", refused(real_lstat)):
+                        code, out, err = self.run_main()
+                    self.assertEqual(len(looks), failing_look)  # the walk's look succeeded before the second failed
+                    self.assertEqual((code, out), (1, ""))
+                    self.assertEqual(err, f"error: 'app/locked/\\xe9\\u202e\\u0436.js' cannot be looked at: {reason}\n")
+                    self.assertTrue(err.isascii())
+                    self.assertFalse(self.output.exists())
 
     def test_shows_a_non_ascii_name_through_ascii_in_every_refusal(self):
         root = Path(self.temp.name)
