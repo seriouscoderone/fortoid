@@ -493,10 +493,11 @@ engine and change as little of it as possible.
 - **Which browser.** The automated tests use Chromium, so Chrome or Edge is the
   recommended browser. Others are not tested. Safari removes a site's storage
   after a week without use, which would remove the vault.
-- **Keeping the vault.** Each time a vault is opened, which includes the moment
-  it is made, the wallet asks the browser to keep its storage
-  (`navigator.storage.persist()`), and Settings says whether the browser
-  agreed. Chrome and Edge decide by themselves, show no prompt, and say no to a
+- **Keeping the vault.** Each time a vault is opened, the wallet asks the
+  browser to keep its storage (`navigator.storage.persist()`), and Settings
+  says whether the browser agreed. A wallet set up for the first time is
+  opened at once, so it asks then; a further vault asks when the person first
+  opens it. Chrome and Edge decide by themselves, show no prompt, and say no to a
   site they have just met (tried on 2026-11-15); they may say yes once the
   wallet has been used, which is why it asks at every opening. Inside the phone
   app the wallet asks too and Settings shows nothing: what Android's WebView
