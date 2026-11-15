@@ -97,8 +97,9 @@ def same_file(one: Path, other: Path) -> bool:
 
 
 def check_output(payload: Path, start_script: Path, readme: Path, output: Path) -> None:
-    """Refuses an output that names no file, lies inside the payload (so the next build would pack it), is the start
-    script or the readme, or exists and is not a plain file (a link, a folder, a FIFO)."""
+    """Refuses an output that names no file, lies inside the payload (the folder a build reads and must not write to;
+    under app, vendor or wheels the next build would also pack it), is the start script or the readme, or exists and
+    is not a plain file (a link, a folder, a FIFO)."""
     if not output.name:
         raise NotAPackage(f"the output {ascii(str(output))} must be a file's name")
     # os.path.realpath, not Path.resolve: on Python 3.11 and 3.12 resolve() raises RuntimeError on a looping link.
@@ -110,7 +111,7 @@ def check_output(payload: Path, start_script: Path, readme: Path, output: Path) 
         if place == Path(os.path.realpath(path)) or same_file(output, path):
             raise NotAPackage(f"the output is the {label}")
     try:
-        kind = output.lstat().st_mode  # a link is not followed: it would be replaced, not written through
+        kind = output.lstat().st_mode  # lstat, so that a link at the output is seen as a link and refused below
     except FileNotFoundError:
         return
     if not stat.S_ISREG(kind):
