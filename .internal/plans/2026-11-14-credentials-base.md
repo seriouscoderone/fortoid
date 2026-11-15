@@ -33,8 +33,10 @@
 On 2026-11-14, on scratch copies. Nothing was pushed.
 
 - **The merge.** `dev` (`1555227`) and the draft (`2db99e8`) conflict in six files, ten places. Both sides are kept in every place. The resolution is recorded as commit `25756acc863aab8d855be15d6bdbc2d5ac550f9e` (tree `d23d8d751935706f02d9f925449ce1c57be28048`), carried in `fortweb/recorded-merge.bundle`. The steps of Task 1 were replayed on a fresh checkout and gave that tree.
-- **The wallet with every change of Tasks 1 to 4.** 245 Python tests, the type check, the build, 145 browser tests with no slow-file notice, and the 15 publication-workflow tests passed. So did the Python and Node test lists the fork's workflow runs, and the draft's lifecycle suite served as the workflow serves it.
-- **Fortoid.** Pinned to that wallet and to the draft's runtime source, Fortoid built the package, imported it (174 files), built the APK and passed its JVM tests, its lint and its payload checks. The wallet for a computer was built from the imported payload, unzipped, started from its own folder and opened by the wallet's browser test.
+- **The wallet with every change of Tasks 1 to 4.** 245 Python tests, the type check, the build, 146 browser tests with no slow-file notice, and the 15 publication-workflow tests passed. So did the Python and Node test lists the fork's workflow runs, its build-twice check, its canary, its wheelhouse test, and the draft's lifecycle suite served as the workflow serves it. The canary passes only with the browser the workflow installs, the headless shell: the container's full Chromium also asks for `/favicon.ico`, the canary's server answers 404, and the test counts that as an error.
+- **A real browser's answer.** Chromium 153, asked at the fresh address `http://127.0.0.1:8791/` to keep storage, answers no and shows no prompt. Chrome and Edge decide by themselves and favour sites that have been used. So the wallet asks at every opening of a vault, not only when one is made (Task 3).
+- **A phone that had the earlier wallet.** A browser test with the earlier vault still remembered for a fast launch, and its fingerprint passcode still saved, shows the old unlock screen and then *Set up your wallet*, and a wallet can be made from there. One sentence, "Vault 'my-wallet' was not found.", reaches a screen reader; nothing of it is on the screen. The fork's test "a remembered vault that no longer exists falls back to normal launch" keeps covering the path.
+- **Fortoid.** Pinned to that wallet and to the draft's runtime source, Fortoid built the package, imported it (174 files), built the APK and passed its JVM tests, its lint and its payload checks. The wallet for a computer was built from the imported payload, unzipped, started from its own folder and opened by the wallet's browser test. All of this was repeated on 2026-11-15 after the stress-test's changes.
 - **The two workflow scripts.** The copying script was run against a stand-in for `gh` in five situations: no copy yet (with a real download of the Foundation's archive, which matched its digest), a correct copy, a wrong copy, a release without the file, and wrong bytes from upstream. The publishing script was run for a built payload and for a failed one.
 - **Not tried, because this container has no emulator:** Fortoid's eight emulator workflows. Task 6 is where the merged wallet first runs on Android.
 - **Known and left as it is.** `playwright/registry-receipt.spec.ts`, one of the draft's own files that no workflow runs, has a test named "recipient API is disabled in the ordinary runtime". It fails on `credentials` once the switch is on, because the switch is what turns that API on (decision D3 of the design). The file's other seven tests pass. Two tests of `playwright/registry-backend.spec.ts` fail on the draft alone, because they look for a line the draft has since changed (noted for the Foundation in `fortoid-dvq`). Three tests of `tools/runtime-safe-output.test.mjs`, also run by no workflow, need a Python 3.14 environment at `.venv-pyodide-314` and fail without it, before and after this plan.
@@ -49,7 +51,7 @@ On 2026-11-14, on scratch copies. Nothing was pushed.
 | `.github/workflows/fortweb-runtime-playwright.yml` | Also runs on pushes to `credentials` (Task 1). |
 | `pyscript-ci.toml`, `scripts/verify_runtime_tree.py` | The draft's test switch, on, and the verifier's rule for it (Task 2). |
 | `app/runtime/storage-keeping.ts` (new) | Asking the browser to keep storage, and reading its answer (Task 3). |
-| `app/app/main.ts`, `app/app/page-loader.ts`, `app/app/page-factory.ts`, `app/features/settings/settings-page.ts` | Ask when a vault is made; show the answer in Settings in a regular browser (Task 3). |
+| `app/app/main.ts`, `app/app/page-loader.ts`, `app/app/page-factory.ts`, `app/features/settings/settings-page.ts` | Ask when a vault is opened; show the answer in Settings in a regular browser (Task 3). |
 | `scripts/start_wallet.py` (new) | Serves a wallet package to a browser on the same computer (Task 4). |
 | `playwright/fortweb-credentials-switch.spec.ts`, `playwright/fortweb-storage-keeping.spec.ts`, `playwright/fortweb-desktop-start.spec.ts`, `python/test_start_wallet.py` (new) | Their tests. |
 | `.github/actions/produce-runtime-package/action.yml`, `package.json` | The lists of tests the workflow runs (Tasks 2, 3 and 4). |
@@ -379,13 +381,11 @@ test.describe('The credential engine in this build', () => {
             expect((await finishRequest(page)).ok).toBe(true);
 
             await startRequest(page, 'ipex.get', { vaultId: 'my-wallet', syntheticOnly: true, said: NO_SUCH_EXCHANGE });
-            expect(await finishRequest(page)).toEqual({ ok: false, code: 'NOT_FOUND', message: 'IPEX exchange was not found.' });
+            expect(await finishRequest(page)).toMatchObject({ ok: false, code: 'NOT_FOUND' });
 
             // The engine still asks every caller to say that the credentials are test ones.
             await startRequest(page, 'ipex.get', { vaultId: 'my-wallet', said: NO_SUCH_EXCHANGE });
-            expect(await finishRequest(page)).toEqual({
-                ok: false, code: 'UNSUPPORTED', message: 'IPEX testing is restricted to synthetic credentials.',
-            });
+            expect(await finishRequest(page)).toMatchObject({ ok: false, code: 'UNSUPPORTED' });
         });
 });
 ```
@@ -511,7 +511,7 @@ One of the draft's own tests, which no workflow runs, states the opposite of thi
 
 **Files:**
 - Create: `app/runtime/storage-keeping.ts`
-- Modify: `app/app/main.ts` (`createVault`, `setUpWallet`, one import)
+- Modify: `app/app/main.ts` (`openVault`, one import)
 - Modify: `app/app/page-loader.ts` (`RouteDataResult`, the `settings` route, two imports)
 - Modify: `app/app/page-factory.ts` (the `settings` route)
 - Modify: `app/features/settings/settings-page.ts`
@@ -528,11 +528,11 @@ One of the draft's own tests, which no workflow runs, states the opposite of thi
   - `RouteDataResult.storageKept?: StorageKept` for the `settings` route, absent inside the phone app.
 
 **Acceptance Criteria:**
-- Making a wallet, by *Set up your wallet* or by creating a further vault, calls `navigator.storage.persist()` once and does not wait for the answer.
+- Each time a vault is opened, which includes the moment a wallet is made, the wallet calls `navigator.storage.persist()` once and does not wait for the answer. A browser that said no is asked again at the next opening: a real Chrome says no to a site it has just met.
 - In a regular browser, Settings shows `Kept by the Browser` with `Yes`, with `No. The browser may remove this wallet's storage when it runs short of space.`, or with `This browser does not say.`
 - Inside the phone app the wallet asks too, and Settings shows no such line: what Android's WebView answers, and what it then does with the storage, is not known yet, and the wallet does not say what it does not know.
-- Nothing is asked at start-up or at unlock.
-- `npm run typecheck` reports no error; `playwright/fortweb-storage-keeping.spec.ts` passes (3 tests).
+- Nothing is asked before a vault is opened.
+- `npm run typecheck` reports no error; `playwright/fortweb-storage-keeping.spec.ts` passes (4 tests).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -545,20 +545,23 @@ import { setUpWallet } from './fixtures/roles';
 
 interface Asked { asked: number; kept: boolean }
 
-/** The browser's answer is made the test's own: it counts how often it is asked, and says `agrees` every time. */
-async function browserThat(page: Page, agrees: boolean): Promise<void> {
-    await page.addInitScript((answer) => {
+/**
+ * The browser's answers are made the test's own: it counts how often it is asked and gives `answers` in turn, the
+ * last one again from then on.
+ */
+async function browserThatSays(page: Page, ...answers: boolean[]): Promise<void> {
+    await page.addInitScript((given) => {
         const state = { asked: 0, kept: false };
         (window as unknown as { storageAsked: typeof state }).storageAsked = state;
         StorageManager.prototype.persist = async function persist(): Promise<boolean> {
+            state.kept = given[Math.min(state.asked, given.length - 1)] === true;
             state.asked += 1;
-            state.kept = answer;
-            return answer;
+            return state.kept;
         };
         StorageManager.prototype.persisted = async function persisted(): Promise<boolean> {
             return state.kept;
         };
-    }, agrees);
+    }, answers);
 }
 
 /** Stands in for the phone app: its bridge is there, and offers nothing. */
@@ -596,7 +599,7 @@ function keptByTheBrowser(page: Page) {
 
 test.describe('Keeping the wallet\'s storage', () => {
     test('making a wallet asks the browser once, and Settings says the browser agreed', async ({ page }) => {
-        await browserThat(page, true);
+        await browserThatSays(page, true);
         await setUpWallet(page);
         await expect.poll(async () => (await asked(page)).asked).toBe(1);
         await openSettings(page);
@@ -604,7 +607,7 @@ test.describe('Keeping the wallet\'s storage', () => {
     });
 
     test('Settings says so when the browser did not agree', async ({ page }) => {
-        await browserThat(page, false);
+        await browserThatSays(page, false);
         await setUpWallet(page);
         await expect.poll(async () => (await asked(page)).asked).toBe(1);
         await openSettings(page);
@@ -612,8 +615,22 @@ test.describe('Keeping the wallet\'s storage', () => {
             .toHaveText('No. The browser may remove this wallet\'s storage when it runs short of space.');
     });
 
+    test('a browser that said no is asked again when the vault is next opened, and Settings follows its answer', async ({ page }) => {
+        await browserThatSays(page, false, true);
+        await setUpWallet(page);
+        await expect.poll(async () => (await asked(page)).asked).toBe(1);
+        await page.getByRole('button', { name: 'Lock vault' }).click();
+        await expect(page.getByRole('heading', { name: 'Open My Wallet' })).toBeVisible({ timeout: 60_000 });
+        await page.getByLabel('Passcode', { exact: true }).fill('roles-pass-1');
+        await page.getByRole('button', { name: 'Open', exact: true }).click();
+        await expect(page.getByRole('heading', { name: 'Roles', exact: true, level: 1 })).toBeVisible({ timeout: 60_000 });
+        await expect.poll(async () => (await asked(page)).asked).toBe(2);
+        await openSettings(page);
+        await expect(keptByTheBrowser(page)).toHaveText('Yes');
+    });
+
     test('inside the phone app the wallet still asks, and Settings has no line about a browser', async ({ page }) => {
-        await browserThat(page, false);
+        await browserThatSays(page, false);
         await insideThePhoneApp(page);
         await setUpWallet(page);
         await expect.poll(async () => (await asked(page)).asked).toBe(1);
@@ -632,7 +649,7 @@ In `package.json`, at the end of the list in `test:e2e:prepared-runtime`, add ` 
 npx playwright test -c playwright.local.config.ts --trace off playwright/fortweb-storage-keeping.spec.ts
 ```
 
-Expected: all three tests fail at `expect.poll(...).toBe(1)`: the browser was asked 0 times.
+Expected: all four tests fail at their first `expect.poll(...).toBe(1)`: the browser was asked 0 times.
 
 - [ ] **Step 3: Write the module**
 
@@ -643,8 +660,10 @@ Create `app/runtime/storage-keeping.ts` (`fortweb/storage-keeping.ts` beside thi
  * Whether the browser has agreed to keep this wallet's storage.
  *
  * A browser may remove a site's storage when space runs short unless the site has asked to keep it and the browser
- * has agreed. The wallet asks when a vault is made. In a regular browser, Settings shows the answer. Inside the phone
- * app the wallet asks too and shows nothing: what Android's WebView answers, and what it then does, is not yet known.
+ * has agreed. Chrome and Edge decide by themselves, without asking the person, and say no to a site they have just
+ * met; they may say yes once it has been used. So the wallet asks each time a vault is opened, which includes the
+ * moment it is made. In a regular browser, Settings shows the answer. Inside the phone app the wallet asks too and
+ * shows nothing: what Android's WebView answers, and what it then does, is not yet known.
  */
 export type StorageKept = "kept" | "not-kept" | "unknown";
 
@@ -664,7 +683,7 @@ async function answer(ask: (storage: StorageManager) => Promise<boolean>): Promi
     }
 }
 
-/** Asks the browser to keep the wallet's storage. A browser that says no is asked again when the next vault is made. */
+/** Asks the browser to keep the wallet's storage. A browser that says no is asked again at the next opening. */
 export function askToKeepStorage(): Promise<StorageKept> {
     return answer((storage) => (typeof storage.persist === "function" ? storage.persist() : Promise.reject()));
 }
@@ -675,7 +694,7 @@ export function storageKept(): Promise<StorageKept> {
 }
 ```
 
-- [ ] **Step 4: Ask when a vault is made, and show the answer in Settings**
+- [ ] **Step 4: Ask when a vault is opened, and show the answer in Settings**
 
 ```bash
 git apply /home/user/fortoid/.internal/plans/2026-11-14-credentials-base/fortweb/task3-keeping-storage.diff
@@ -685,7 +704,7 @@ It is this change:
 
 ```diff
 diff --git a/app/app/main.ts b/app/app/main.ts
-index 602642c..980da3b 100644
+index 602642c..ca0ebcf 100644
 --- a/app/app/main.ts
 +++ b/app/app/main.ts
 @@ -29,6 +29,7 @@ import { renderSetupPage } from "../features/vaults/setup-page.js";
@@ -696,22 +715,16 @@ index 602642c..980da3b 100644
  import {
      readErrorMessage,
      type KeptRead,
-@@ -391,6 +392,7 @@ actions = {
-     async createVault(name: string, passcode = ""): Promise<VaultRecord> {
-         const currentVaultId = currentState().unlockedVaultId;
-         const { vault } = await bridge.request<{ vault: VaultRecord }>(METHODS.vaultsCreate, { name, passcode });
-+        void askToKeepStorage();
+@@ -376,6 +377,9 @@ actions = {
  
-         if (currentVaultId) {
-             await bridge.request(METHODS.vaultsClose, { vaultId: currentVaultId }).catch(() => {});
-@@ -409,6 +411,7 @@ actions = {
- 
-     async setUpWallet(name: string, passcode: string): Promise<void> {
-         const { vault } = await bridge.request<{ vault: VaultRecord }>(METHODS.vaultsCreate, { name, passcode });
+     async openVault(vaultId: string, passcode = ""): Promise<Record<string, unknown>> {
+         const { vault } = await bridge.request<{ vault: Record<string, unknown> }>(METHODS.vaultsOpen, { vaultId, passcode });
++        // A browser that has just met the wallet says no; it may say yes once the wallet has been used. So the
++        // wallet asks at every opening, and does not wait for the answer.
 +        void askToKeepStorage();
-         await actions.refreshVaults(null, null);
-         await actions.openVault(vault.id, passcode);
-         const fingerprint = await fingerprintState(vault);
+         session.patch({
+             unlockedVaultId: vaultId,
+             vaultSummary: assumeType<VaultSummary>(vault),
 diff --git a/app/app/page-factory.ts b/app/app/page-factory.ts
 index 7c77360..ba9e29a 100644
 --- a/app/app/page-factory.ts
@@ -838,7 +851,7 @@ index 8ea4c8b..0852904 100644
      "app/app/router.ts",
 ```
 
-`void askToKeepStorage()` is deliberate: the answer is not waited for, so making a wallet is no slower, and a browser that never answers holds nothing up.
+`void askToKeepStorage()` is deliberate: the answer is not waited for, so opening a vault is no slower, and a browser that never answers holds nothing up. It sits in `openVault`, the one place every opening passes through; a vault that was just made is opened at once.
 
 - [ ] **Step 5: Check, build and run the tests**
 
@@ -849,7 +862,7 @@ npx playwright test -c playwright.local.config.ts --trace off playwright/fortweb
 npx playwright test -c playwright.local.config.ts --trace off playwright/fortweb-wallet-first.spec.ts playwright/fortweb-accessibility.spec.ts playwright/fortweb-fingerprint-unlock.spec.ts
 ```
 
-Expected: no type error; `3 passed`; the wallet-first, accessibility and fingerprint specs pass as before, 24 tests (they make wallets and open Settings).
+Expected: no type error; `4 passed`; the wallet-first, accessibility and fingerprint specs pass as before, 24 tests (they make and open wallets).
 
 - [ ] **Step 6: Commit**
 
@@ -857,12 +870,13 @@ Expected: no type error; `3 passed`; the wallet-first, accessibility and fingerp
 git add app/runtime/storage-keeping.ts tsconfig.json tsconfig.build.json
 git commit -m "feat(storage): ask the browser to keep the wallet's storage, and read its answer (<bead>)"
 git add app/app/main.ts app/app/page-loader.ts app/app/page-factory.ts app/features/settings/settings-page.ts
-git commit -m "feat(settings): the wallet asks when a vault is made, and Settings shows what the browser said (<bead>)
+git commit -m "feat(settings): the wallet asks at every opening of a vault, and Settings shows what the browser said (<bead>)
 
-Inside the phone app there is no such line: what Android's WebView does
-with the answer is not known yet."
+Chrome says no to a site it has just met, so one question when the vault
+is made would be the wrong moment. Inside the phone app there is no such
+line: what Android's WebView does with the answer is not known yet."
 git add playwright/fortweb-storage-keeping.spec.ts package.json
-git commit -m "test(storage): making a wallet asks once; Settings says yes or no, and nothing inside the phone app (<bead>)"
+git commit -m "test(storage): opening a vault asks; a browser that said no is asked again; nothing is shown inside the phone app (<bead>)"
 ```
 
 ---
@@ -1270,15 +1284,17 @@ def main(argv: list[str] | None = None) -> int:
     if absent:
         print(f"This folder is not a wallet package: it has no {', '.join(absent)}.", file=sys.stderr)
         return 2
+    address = f"http://{HOST}:{PORT}/"
     try:
         server = Server(root, PORT)
     except OSError:
         print(f"Port {PORT} on this computer is in use, perhaps by another copy of this wallet.\n"
               "The wallet keeps its storage under one address, so this script does not pick another port.\n"
-              "Close the other program and start again.", file=sys.stderr)
+              "Close the other program and start again. Until this script says the wallet is running,\n"
+              f"do not open {address}: whatever holds the port would be answering there.", file=sys.stderr)
         return 1
-    address = f"http://{HOST}:{PORT}/"
-    print(f"The wallet is at {address}\nLeave this window open while you use it. Press Ctrl+C to stop.", flush=True)
+    print(f"The wallet is at {address}\nLeave this window open while you use it. Press Ctrl+C to stop.\n"
+          "If it opens in a browser other than Chrome or Edge, copy the address into one of those.", flush=True)
     if not args.no_browser:
         webbrowser.open(address)
     try:
@@ -1313,7 +1329,7 @@ npm run test:e2e:prepared-runtime -- -c playwright.local.config.ts --trace off 2
 npm run test:runtime-publication-workflow
 ```
 
-Expected: `Ran 245 tests`, `OK`; no type error; `145 passed`, none failed, no `Slow test file`; 15 passing.
+Expected: `Ran 245 tests`, `OK`; no type error; `146 passed`, none failed, no `Slow test file`; 15 passing.
 
 - [ ] **Step 6: Commit and push**
 
@@ -1688,7 +1704,7 @@ From the log of the "Android API 36 Startup Proof" run, step "Report the start-u
 
 - [ ] **Step 7: Run the copying workflow a second time**
 
-Start "Runtime source mirror" by hand on `dev` (`workflow_dispatch`). It must end green, and its log must say `copy present and correct: runtime-source-sedi-core-csp-20261107`.
+Run the "Runtime source mirror" run of Step 6 again ("Re-run all jobs"; with the GitHub tools, `rerun_workflow_run` with that run's number). GitHub starts a workflow by hand only when its file is on the default branch, and this one is on `dev` only; running a run again needs no such thing. It must end green, and its log must say `copy present and correct: runtime-source-sedi-core-csp-20261107`.
 
 ---
 
@@ -1824,7 +1840,7 @@ is merged into it.
 
 2. In the build block, the three pinned values become the draft's: the address after `--url` becomes `https://github.com/seriouscoderone/fortoid/releases/download/runtime-source-sedi-core-csp-20261107/runtime-source.tar.gz`, the value after `--sha256` becomes `3618b16ee66aca5704d76310b792383f0a32260c2e774fd5e42f8b62e5f7dd9a`, and the manifest digest becomes `f76cf23f5cdaa5fe3f7a0e264c862290f9c8b6be2aafca6622926e1869731431` in both places that name it. After the block, add: "The address is this repository's own checked copy of the Foundation's archive `runtime-source-sedi-core-csp-20261107` (`config/runtime-source-mirror.json`)."
 
-3. In the paragraph that begins "Tests: Playwright must use the container's Chromium", after "`npm run test:runtime-publication-workflow`." add: "After a build, also `python3 -m unittest python/test_verify_runtime_tree.py python/test_start_wallet.py`."
+3. In the paragraph that begins "Tests: Playwright must use the container's Chromium", after "`npm run test:runtime-publication-workflow`." add: "After a build, also `python3 -m unittest python/test_verify_runtime_tree.py python/test_start_wallet.py`. The workflow's canary (`playwright/runtime-canary.spec.ts`) passes only with the headless shell, the browser the workflow installs (in this container under `/opt/pw-browsers/chromium_headless_shell-*`): the full Chromium also asks for `/favicon.ico`, the canary's server answers 404, and the test counts that as an error."
 
 4. Replace the paragraph that begins "Credentials: the Foundation's draft" with:
 
@@ -1842,6 +1858,12 @@ call must pass `syntheticOnly: true`. The draft's own credential tests
 workflow; one of them, "recipient API is disabled in the ordinary runtime",
 fails here by design. Before changing the draft's files, read
 `.internal/specs/2026-11-14-standard-credential-screens-design.md`.
+
+When the draft moves: if the Foundation added commits to it, merge
+`upstream/pr42` into `credentials` again. If it rewrote its branch, start a
+new branch from `dev`, merge the new head the way Task 1 of
+`.internal/plans/2026-11-14-credentials-base.md` did, and cherry-pick this
+branch's own commits onto it.
 ```
 
 5. After the paragraph on Pyodide proxies (it ends "the roles time-limit tests (`playwright/fortweb-roles-time.spec.ts`) do."), add:
@@ -1896,6 +1918,8 @@ The session branch and `dev` are identical again. Do not push again until every 
 - [ ] **Step 9: Report**
 
 For each workflow, on the session branch and on `dev`: the run's number and its result. From the Startup Proof's step "Report the start-up time", both runs: the number after `elapsedMs=`, beside the number from Task 5. If a new number is above 25,000, say so: the wallet's limit is 30,000, and little room is left.
+
+**Going back.** If the pin has to be taken back after `dev` has moved, revert the two pin commits (the reviewed runtime source and the wallet) with `git revert`, push both branches together, and wait for every workflow. The earlier wallet comes back with its vault: the new engine keeps its storage under another name and never touches the earlier one. A wallet made with the new engine is then not shown, for the same reason, and shows again when the pin returns.
 
 ---
 
@@ -2131,7 +2155,8 @@ You need Python 3 and nothing else.
 Good to know
 ------------
 
-- Use Chrome or Edge. Other browsers are not tested, and Safari removes a
+- Use Chrome or Edge. If the wallet opens in another browser, copy the address
+  into Chrome or Edge. Other browsers are not tested, and Safari removes a
   site's storage after a week without use, which would remove your vault.
 - Use one tab. A second tab is told that the wallet is already open.
 - Use a browser profile with no extensions. An extension that may read pages
@@ -2139,7 +2164,12 @@ Good to know
 - The wallet lives at one address: http://127.0.0.1:8791/. Your vault is kept
   by the browser under that address. If something else on this computer is
   using port 8791 the script says so and stops. It does not pick another port,
-  because another address would be an empty wallet.
+  because another address would be an empty wallet. Do not open the address
+  while the script is not running: whatever holds the port would answer there.
+- The browser decides whether it keeps the wallet's storage for good. Chrome
+  and Edge usually say no to a site they have just met. The wallet asks again
+  each time you open your vault. Settings shows the answer as
+  "Kept by the Browser".
 - Set the computer's clock to automatic time.
 - Use the phone app and this download from the same release, so both are the
   same version.
@@ -2191,7 +2221,7 @@ It is this change:
 
 ```diff
 diff --git a/.github/workflows/demo-apk.yml b/.github/workflows/demo-apk.yml
-index 1fee74e..d3f9f39 100644
+index 1fee74e..164d7a9 100644
 --- a/.github/workflows/demo-apk.yml
 +++ b/.github/workflows/demo-apk.yml
 @@ -3,6 +3,8 @@ name: Demo APK
@@ -2231,7 +2261,8 @@ index 1fee74e..d3f9f39 100644
            SHORT_SHA="${GITHUB_SHA::7}"
 +          ASSETS=(fortoid-demo.apk)
            if [ "$PAYLOAD" = "success" ]; then
-             WALLET="Includes the FortWeb wallet (KERI Wallet icon)."
+-            WALLET="Includes the FortWeb wallet (KERI Wallet icon)."
++            WALLET="Includes the FortWeb wallet (KERI Wallet icon). A wallet made with a build from before the credential engine is not shown by this one: the engine keeps its storage in a new place."
            else
              WALLET="FortWeb wallet build failed for this commit; only the Fort Demo icon works."
            fi
@@ -2280,6 +2311,10 @@ Edge, one tab, in a browser profile with no extensions. The script serves the
 folder to that computer only, and the browser keeps the vault under that one
 address. The release notes give the zip's SHA-256; `README.txt` in the zip
 says the rest.
+
+The Releases page has one more entry, "Runtime source copy": this
+repository's checked copy of the archive the wallet is built from. It is not
+something to install.
 ```
 
 In "Wallet features (FortWeb fork)", the sentence "The wallet in the APK is built from [seriouscoderone/fortweb](https://github.com/seriouscoderone/fortweb), which uses the bridge above:" becomes "The wallet in the APK is built from the `credentials` branch of [seriouscoderone/fortweb](https://github.com/seriouscoderone/fortweb), which uses the bridge above:". After the last bullet of that list ("If the vault closes in the background, …"), add:
@@ -2289,8 +2324,10 @@ In "Wallet features (FortWeb fork)", the sentence "The wallet in the APK is buil
   Foundation's draft credential engine. Vaults made with builds before it are
   not shown: the engine keeps its storage in a new place. Nothing new is on
   screen for credentials yet.
-- **Keeping the vault.** When a wallet is made it asks the browser to keep its
-  storage. On a computer, *Settings* shows whether the browser agreed.
+- **Keeping the vault.** Each time a vault is opened the wallet asks the
+  browser to keep its storage. On a computer, *Settings* shows whether the
+  browser agreed. Chrome and Edge decide by themselves and usually say no to a
+  site they have just met.
 ```
 
 - [ ] **Step 7: Commit, push once, and check the release**
@@ -2332,11 +2369,16 @@ Expected: the zip's SHA-256 equals the one in the notes of the `demo-latest` rel
 - Consumes: the `demo-latest` release after Task 7.
 
 **Acceptance Criteria:**
-- On the phone: the new APK installs over the old one; the wallet starts at *Set up your wallet* (the earlier vault is not shown, as agreed in the design, D2); a wallet is made; fingerprint unlock is offered and works; *Roles* reads `mad.seriouscoder.one` and a role can be taken on; after the app has been in the background for a minute it returns to the unlock screen and unlocks.
-- On the computer: the zip from the same release starts with one command; the wallet opens in Chrome or Edge at `http://127.0.0.1:8791/`; a wallet is made; it is still there after the browser is closed and the script is started again; *Roles* reads `mad.seriouscoder.one`; *Settings* shows a line "Kept by the Browser".
+- On the phone: the new APK installs over the old one; the wallet ends at *Set up your wallet* (the earlier vault is not shown, as agreed in the design, D2); a wallet is made; fingerprint unlock is offered and works; *Roles* reads `mad.seriouscoder.one` and a role can be taken on; after the app has been in the background for a minute it returns to the unlock screen and unlocks.
+- On the computer: the zip from the same release starts with one command; the wallet opens in Chrome or Edge at `http://127.0.0.1:8791/`; a wallet is made; it is still there after the browser is closed and the script is started again; *Roles* reads `mad.seriouscoder.one`; *Settings* shows a line "Kept by the Browser", with whatever the browser answered.
 - The owner has said that both work, or has said what does not.
 
-- [ ] **Step 1: Tell the owner what to do**, in a few plain lines: where the release is; install the APK; on the computer, unzip and run `python3 start-wallet.py`; what to look for on each. Say two things that could surprise: the phone's earlier vault is not shown, and a second browser tab shows the unlock screen and then says "This wallet is already open in another browser worker."
+- [ ] **Step 1: Tell the owner what to do**, in a few plain lines: where the release is; install the APK; on the computer, unzip and run `python3 start-wallet.py` (on Windows `py start-wallet.py`; the computer needs Python 3, so ask which computer it is if that is not known); what to look for on each. Say what could surprise:
+
+  - On the phone, the first start after the update shows the earlier wallet's unlock screen for a few seconds, and may ask for a fingerprint. It then moves to *Set up your wallet* by itself.
+  - The earlier vault is not shown. Its data stays on the phone, out of the new build's reach, until the app's storage is cleared in Android's settings. Going back to an earlier build would show it again.
+  - On the computer, *Settings* will most likely say "No. The browser may remove this wallet's storage when it runs short of space." Chrome says that to a site it has just met; the wallet asks again each time the vault is opened.
+  - A second browser tab shows the unlock screen and then says "This wallet is already open in another browser worker."
 
 - [ ] **Step 2: Record what the owner reports** on the task's bead. Anything that does not work becomes a bug bead with what was seen, and this task stays open until it is settled.
 
@@ -2362,7 +2404,51 @@ Expected: the zip's SHA-256 equals the one in the notes of the `demo-latest` rel
 
 Left for the later plans, as the design's phases have it: the label "Experimental: for test credentials only" (with the credential screens, phase 3); the replay settings of D14 (phase 3); every message, code, screen and list of phases 2 and 3; the two sentences for a wallet open in another tab and for a wallet that could not save (with the first new screens, phase 2; until then a second tab shows the engine's own sentence). The beads for the two later plans are `fortoid-dls` (phase 2, which carries those two sentences in its notes) and `fortoid-cl1` (phase 3).
 
-Two things this plan settles more narrowly than the design's first wording. The design now says both:
+Three things this plan settles differently from the design's first wording. The design now says all three:
 
 - **Who reads the copy.** Fortoid's builds read the repository's own copy of the runtime source. The wallet repository's own workflow keeps reading the Foundation's address, which the draft's build action names, so that the fork's copy of that action stays as the Foundation wrote it. If that address ever fails, the workflow's three inputs take the copy's address and the two digests.
 - **Where Settings shows the browser's answer.** In a regular browser only. Inside the phone app the wallet asks too, and shows nothing, because what Android's WebView answers and then does is not known. Finding that out is the follow-up `fortoid-5wf`.
+- **When the wallet asks.** At every opening of a vault, not only when one is made: a real Chrome says no to a site it has just met, and may say yes once the wallet has been used.
+
+## Stress Test Results: the plan for phase 1 (the base)
+
+Run on 2026-11-15, after the owner approved the plan. Twelve branches were mapped and three more came out of the self-review. Fourteen were settled from the code and by trying things on scratch copies; one was put to the owner.
+
+### Resolved Decisions
+
+- **The draft may move under the merge.** It had not: `upstream/pr42` is still `2db99e8` and the Foundation's `main` is still `a82bcb2`. Task 1 stops if that changes. How to take a newer draft later is now in the agent notes (Task 6): merge it again if the Foundation added commits; if it rewrote its branch, start again from `dev` as Task 1 does and cherry-pick the branch's own commits.
+- **Starting workflows by hand.** GitHub starts a workflow by hand only when its file is on the default branch. The nine that Task 6 starts on the session branch are on `main`, and one of them was started that way on 2026-11-12. The copying workflow of Task 5 is on `dev` only, so its second run is a re-run of the first.
+- **What a browser answers when asked to keep storage.** Tried for real: Chromium 153 at the fresh address `http://127.0.0.1:8791/` answers no, with no prompt. Asking once, when the vault is made, would have been the worst moment. The wallet now asks at every opening of a vault.
+- **A phone that had the earlier wallet.** Tried with the earlier vault remembered and its fingerprint passcode saved: the old unlock screen shows, then *Set up your wallet*, and a wallet can be made. Nothing wrong is on the screen. The earlier vault's data stays on the phone, out of reach, which is also what makes going back lossless.
+- **Going back.** Reverting the two pin commits restores the earlier wallet with its vault. Written into Task 6.
+- **What the computer's wallet is safe for (the owner agreed on 2026-11-15).** A local address belongs to whichever program takes its port first; such a program could pose as the wallet. The script cannot prevent that. The computer's wallet is for the demonstration with test credentials. The script stops and says not to open the address when the port is taken; the README says the same; the design records it, and a desktop application for real use is a later slice.
+- **The switch is on two phases before its label.** Kept as the design has it. No screen calls what the switch turns on until phase 3, and only the wallet's own page can reach the engine. One of the draft's own tests, run by no workflow, fails by design.
+- **The copy of the runtime source.** The workflow's script was read for injection: every value it uses comes from the checked list, is quoted, and the tag, the digest and the address are restricted to plain characters. A wrong copy cannot enter a build, because every build checks both digests again.
+- **Time and capacity.** No browser test file passes 190 seconds locally. Nine workflows started together fit GitHub's limit for a public repository.
+- **The fork's CI steps that had not been run locally.** The build-twice check and the wheelhouse test pass. The canary passes with the headless shell, the browser the workflow installs; with the container's full Chromium it fails on a request for `/favicon.ico`, which is a matter of the local browser and is now in the agent notes.
+- **The new tests under the workflow's browser.** The three new browser test files and the rewritten test pass with the headless shell as well as with the container's Chromium.
+- **Web Locks on Android.** The draft needs `navigator.locks` inside the worker. The feature has been in every Chromium since 2018 and works in workers; that it works in the phone's WebView is expected and unproven until Task 6, which is why the pin is proved on the session branch before `dev` moves.
+
+### Changes Made
+
+- Task 3: the wallet asks in `openVault`, at every opening; a fourth test (a browser that said no is asked again, and Settings follows); the module's comment says why.
+- Task 2: the switch test holds the engine to its codes (`NOT_FOUND`, `UNSUPPORTED`), not to the draft's sentences.
+- Task 4: the start script says not to open the address when the port is taken, and to copy the address into Chrome or Edge if another browser opens.
+- Task 5: the second run of the copying workflow is a re-run.
+- Task 6: the agent notes gain how to take a newer draft and the canary's need for the headless shell; a paragraph "Going back".
+- Task 7: the README in the zip gains three sentences (another browser, a taken port, how the browser decides about storage); the release notes say that a wallet from before the credential engine is not shown; Fortoid's README says what the "Runtime source copy" entry is.
+- Task 8: what the owner will see on first start of the phone, in Settings on the computer, and where the earlier vault's data stays.
+- The design: the wallet asks at every opening; what a local address is safe for; a desktop application as a later slice.
+- Numbers: the browser suite has 146 tests after Task 4.
+
+### Deferred / Parking Lot
+
+- What Android's WebView answers when asked to keep storage, and what Settings should say on the phone: `fortoid-5wf`.
+- The sentence "Vault 'my-wallet' was not found." that reaches a screen reader on the first start after the update. It happens once, on a phone that had the earlier wallet. Left as it is.
+- A desktop application around the wallet, for real use on a computer: a later slice in the design.
+- Firefox asks the person, by a prompt, each time the wallet asks to keep storage, until the person answers. Firefox is not a recommended browser for this build.
+
+### Confidence Assessment
+
+- Overall: High for Tasks 1 to 5 and 7, which were run end to end on scratch copies. Medium for Task 6: the merged wallet has never run on Android, and the plan is built so that `dev` and the published demo do not move until it has.
+- Areas of concern: Web Locks inside the worker in Android's WebView; start-up time now that the engine writes to storage after every request; a second engine meeting `BUSY` when Android restarts the page.
