@@ -1,5 +1,7 @@
 """tools/build_desktop_wallet.py: the zip a person downloads to run the wallet on a computer."""
+import contextlib
 import importlib.util
+import io
 import os
 import tempfile
 import unittest
@@ -137,6 +139,30 @@ class BuildTest(unittest.TestCase):
             folder.rmdir()
             held.rename(folder)
         tool.build(self.payload, self.script, self.readme, self.output)
+
+    def test_refuses_a_file_name_an_unzip_program_could_misread(self):
+        for odd in ("a\\b.txt", "c:d.txt", "e\x01f.txt", "g\x7fh.txt"):
+            with self.subTest(name=odd):
+                path = self.payload / "app" / odd
+                try:
+                    path.write_text("x")
+                except OSError:
+                    self.skipTest("this system cannot hold such a file name")
+                shown = ascii(f"app/{odd}")
+                with self.assertRaisesRegex(tool.NotAPackage, "not allowed") as caught:
+                    tool.build(self.payload, self.script, self.readme, self.output)
+                self.assertIn(shown, str(caught.exception))
+                self.assertFalse(self.output.exists())
+                self.output.write_bytes(b"older")
+                errors = io.StringIO()
+                with contextlib.redirect_stderr(errors):
+                    code = tool.main(["--payload", str(self.payload), "--start-script", str(self.script),
+                                      "--readme", str(self.readme), "--output", str(self.output)])
+                self.assertEqual(code, 1)
+                self.assertIn(shown, errors.getvalue())
+                self.assertEqual(self.output.read_bytes(), b"older")
+                self.output.unlink()
+                path.unlink()
 
     def test_the_program_prints_the_digest_and_fails_plainly(self):
         self.assertEqual(tool.main(["--payload", str(self.payload), "--start-script", str(self.script),

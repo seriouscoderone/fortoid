@@ -49,7 +49,11 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
         for path in files:
             if path.is_symlink() or not path.is_file():
                 raise NotAPackage(f"{path.relative_to(payload).as_posix()} is not a plain file")
-            found.append((path.relative_to(payload).as_posix(), path))
+            inside = path.relative_to(payload).as_posix()
+            # An unzip program on Windows reads \\ as a separator (and : as a drive), so such a name could land elsewhere.
+            if any(char in "\\:" or ord(char) < 0x20 or ord(char) == 0x7F for char in inside):
+                raise NotAPackage(f"the file name {ascii(inside)} is not allowed")
+            found.append((inside, path))
     return sorted(found)
 
 
