@@ -5,6 +5,7 @@ import importlib.util
 import io
 import os
 import random
+import shutil
 import sys
 import tempfile
 import unittest
@@ -24,26 +25,30 @@ class BuildTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
-        self.payload = root / "payload"
-        (self.payload / "app" / "runtime").mkdir(parents=True)
-        (self.payload / "app" / "index.html").write_text("<!doctype html>")
-        (self.payload / "app" / "runtime" / "bridge.js").write_text("export {};")
-        (self.payload / "vendor").mkdir()
-        (self.payload / "vendor" / "pyodide.mjs").write_text("// pyodide")
-        (self.payload / "wheels").mkdir()
-        (self.payload / "wheels" / "keri.whl").write_bytes(b"PK\x03\x04")
-        (self.payload / "pyscript-ci.toml").write_text('interpreter = "./vendor/pyodide.mjs"\n')
-        (self.payload / "runtime-closure.json").write_text("{}")
-        # What the importer adds for the phone, which is not part of a wallet package:
-        (self.payload / "manifest.json").write_text("{}")
-        (self.payload / "checksums.sha256").write_text("x")
-        (self.payload / "contracts").mkdir()
-        (self.payload / "contracts" / "c.json").write_text("{}")
+        self.payload = self.make_payload(root / "payload")
         self.script = root / "start_wallet.py"
         self.script.write_text("print('start')\n")
         self.readme = root / "README.txt"
         self.readme.write_text("read me\n")
         self.output = root / "out.zip"
+
+    @staticmethod
+    def make_payload(payload):
+        (payload / "app" / "runtime").mkdir(parents=True)
+        (payload / "app" / "index.html").write_text("<!doctype html>")
+        (payload / "app" / "runtime" / "bridge.js").write_text("export {};")
+        (payload / "vendor").mkdir()
+        (payload / "vendor" / "pyodide.mjs").write_text("// pyodide")
+        (payload / "wheels").mkdir()
+        (payload / "wheels" / "keri.whl").write_bytes(b"PK\x03\x04")
+        (payload / "pyscript-ci.toml").write_text('interpreter = "./vendor/pyodide.mjs"\n')
+        (payload / "runtime-closure.json").write_text("{}")
+        # What the importer adds for the phone, which is not part of a wallet package:
+        (payload / "manifest.json").write_text("{}")
+        (payload / "checksums.sha256").write_text("x")
+        (payload / "contracts").mkdir()
+        (payload / "contracts" / "c.json").write_text("{}")
+        return payload
 
     def test_holds_the_wallet_the_script_and_the_note_and_nothing_else(self):
         tool.build(self.payload, self.script, self.readme, self.output)
@@ -191,38 +196,37 @@ class BuildTest(unittest.TestCase):
             refused(link)
 
     def test_refuses_an_entry_of_the_wrong_kind_or_an_empty_folder(self):
-        def refused(message):
-            with self.assertRaisesRegex(tool.NotAPackage, message):
-                tool.build(self.payload, self.script, self.readme, self.output)
-            self.assertFalse(self.output.exists())
+        def app_is_a_file(payload):
+            shutil.rmtree(payload / "app")
+            (payload / "app").write_text("not a folder")
 
-        app = self.payload / "app"
-        moved = self.payload / "app-moved"
-        app.rename(moved)
-        app.write_text("not a folder")
-        refused("app is not a folder")
-        app.unlink()
-        moved.rename(app)
+        def toml_is_a_folder(payload):
+            (payload / "pyscript-ci.toml").unlink()
+            (payload / "pyscript-ci.toml").mkdir()
 
-        toml = self.payload / "pyscript-ci.toml"
-        text = toml.read_text()
-        toml.unlink()
-        toml.mkdir()
-        refused("pyscript-ci.toml is not a file")
-        toml.rmdir()
-        toml.write_text(text)
+        def emptied(name, deeper):
+            def change(payload):
+                shutil.rmtree(payload / name)
+                (payload / name).mkdir()
+                if deeper:
+                    (payload / name / "empty" / "deeper").mkdir(parents=True)
+            return change
 
-        for name in ("vendor", "wheels"):
-            folder = self.payload / name
-            held = folder.rename(self.payload / (name + "-held"))
-            folder.mkdir()
-            refused(f"{name} holds no file")
-            (folder / "empty" / "deeper").mkdir(parents=True)
-            refused(f"{name} holds no file")
-            for leftover in sorted(folder.rglob("*"), reverse=True):
-                leftover.rmdir()
-            folder.rmdir()
-            held.rename(folder)
+        cases = [
+            ("app a file", app_is_a_file, "app is not a folder"),
+            ("pyscript-ci.toml a folder", toml_is_a_folder, "pyscript-ci.toml is not a file"),
+            ("vendor empty", emptied("vendor", False), "vendor holds no file"),
+            ("vendor only empty folders", emptied("vendor", True), "vendor holds no file"),
+            ("wheels empty", emptied("wheels", False), "wheels holds no file"),
+            ("wheels only empty folders", emptied("wheels", True), "wheels holds no file"),
+        ]
+        for number, (case, change, message) in enumerate(cases):
+            with self.subTest(case=case):
+                payload = self.make_payload(Path(self.temp.name) / f"case-{number}")
+                change(payload)
+                with self.assertRaisesRegex(tool.NotAPackage, message):
+                    tool.build(payload, self.script, self.readme, self.output)
+                self.assertFalse(self.output.exists())
         tool.build(self.payload, self.script, self.readme, self.output)
 
     @unittest.skipIf(sys.platform == "win32", "Windows can make no such file name (c: there is a drive)")
