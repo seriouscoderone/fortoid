@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import os
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -142,6 +143,7 @@ class BuildTest(unittest.TestCase):
             held.rename(folder)
         tool.build(self.payload, self.script, self.readme, self.output)
 
+    @unittest.skipIf(sys.platform == "win32", "Windows can make no such file name (c: there is a drive)")
     def test_refuses_a_file_name_an_unzip_program_could_misread(self):
         for odd in ("a\\b.txt", "c:d.txt", "e\x01f.txt", "g\x7fh.txt"):
             with self.subTest(name=odd):
