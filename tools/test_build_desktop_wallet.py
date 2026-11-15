@@ -398,7 +398,7 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(err, f"error: {shown} is not a plain file\n")
             (self.payload / "app" / odd).unlink()
 
-        unread = self.payload / "app" / "é‮.js"
+        unread = self.payload / "app" / "é\u202e.js"
         unread.write_text("x")
         real_read_bytes = Path.read_bytes
 
@@ -416,7 +416,7 @@ class BuildTest(unittest.TestCase):
     def test_shows_a_name_whose_look_fails_through_ascii(self):
         locked = self.payload / "app" / "locked"
         locked.mkdir()
-        unseen = locked / "é‮ж.js"
+        unseen = locked / "é\u202eж.js"
         unseen.write_text("x")
         real_stat, real_lstat = os.stat, os.lstat
 
@@ -438,7 +438,7 @@ class BuildTest(unittest.TestCase):
         # A file is looked at twice: in the walk, and again when it is checked to be a plain file.
         locked = self.payload / "app" / "locked"
         locked.mkdir()
-        unseen = locked / "é‮ж.js"
+        unseen = locked / "é\u202eж.js"
         unseen.write_text("x")
         real_stat, real_lstat = os.stat, os.lstat
         failures = (
