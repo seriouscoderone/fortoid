@@ -30,10 +30,15 @@ const state = process.env.STANDIN_STATE;
 const args = process.argv.slice(2);
 fs.appendFileSync(path.join(state, 'calls.log'), JSON.stringify(['gh', ...args]) + '\\n');
 // The repository this call acts on, as gh resolves it: --repo or -R, then GH_REPO, otherwise the clone's remotes
-// (recorded as null: a run must never fall back to them).
+// (recorded as null: a run must never fall back to them). Both take [HOST/]OWNER/REPO; a name without a host is on
+// gh's default host, GH_HOST, otherwise (gh's own configuration aside) github.com. Recorded as [host, owner/repo].
 const flag = args.findIndex((arg) => arg === '--repo' || arg === '-R');
-const repository = flag >= 0 ? args[flag + 1] : (process.env.GH_REPO || null);
-fs.appendFileSync(path.join(state, 'repositories.log'), JSON.stringify(repository) + '\\n');
+const named = flag >= 0 ? args[flag + 1] : (process.env.GH_REPO || null);
+const parts = named === null ? [] : named.split('/');
+const target = named === null ? null
+  : parts.length === 3 ? [parts[0], parts.slice(1).join('/')]
+  : [process.env.GH_HOST || 'github.com', named];
+fs.appendFileSync(path.join(state, 'repositories.log'), JSON.stringify(target) + '\\n');
 const fail = (message, status = 1) => { process.stderr.write(message + '\\n'); process.exit(status); };
 if (args[0] !== 'release') fail('stand-in gh: unknown command ' + args.join(' '), 2);
 const [, command, tag, ...rest] = args;
@@ -162,7 +167,8 @@ function world({ listTool } = {}) {
     const repositories = readFileSync(path.join(state, 'repositories.log'), 'utf8').split('\n').filter(Boolean)
       .map((line) => JSON.parse(line));
     for (const repository of repositories) {
-      assert.equal(repository, REPOSITORY, 'every gh call acts on GITHUB_REPOSITORY and nothing else');
+      assert.deepEqual(repository, ['github.com', REPOSITORY],
+        'every gh call acts on GITHUB_REPOSITORY at github.com and nothing else');
     }
     return { status: result.status, output };
   };
@@ -309,6 +315,13 @@ test('a public address whose bytes do not match the digest fails and says so', (
 
 test('gh acts on GITHUB_REPOSITORY even when GH_REPO names another repository', () => inWorld((w) => {
   const { status, output } = w.run({ GH_REPO: 'example-foundation/fortoid' });
+  assert.equal(status, 0, output);
+  assert.ok(w.ghCalls('view').length > 0, 'gh was called');
+  assert.equal(w.ghCalls('create').length, 1);
+}));
+
+test('gh acts on github.com even when the caller has GH_HOST set to another host', () => inWorld((w) => {
+  const { status, output } = w.run({ GH_HOST: 'git.example.test' });
   assert.equal(status, 0, output);
   assert.ok(w.ghCalls('view').length > 0, 'gh was called');
   assert.equal(w.ghCalls('create').length, 1);

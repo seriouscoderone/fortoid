@@ -14,7 +14,8 @@
 # Takes gh, curl and node from PATH.
 # Environment:
 #   GITHUB_REPOSITORY  owner/name of this repository (required); every gh call
-#                      acts on it (the script sets GH_REPO to it)
+#                      acts on it at github.com (the script sets GH_REPO to
+#                      github.com/<owner/name>)
 #   GITHUB_SHA         the commit a new release points at (required)
 #   GH_TOKEN           read by gh itself; this script never prints it
 #   MIRROR_LIST        optional: a list file to read instead of the committed
@@ -39,11 +40,13 @@ RETRY_PAUSE="${MIRROR_RETRY_PAUSE:-10}"
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be set}"
 : "${GITHUB_SHA:?GITHUB_SHA must be set}"
 
-# Every gh call acts on GITHUB_REPOSITORY, the repository whose public address
-# check_public reads, never on one gh would take from the clone's remotes (a
-# clone made by hand may have the Foundation's repository as a remote) or from a
-# GH_REPO the caller had set.
-export GH_REPO="$GITHUB_REPOSITORY"
+# Every gh call acts on GITHUB_REPOSITORY at HOST, the repository whose public
+# address check_public reads, never on one gh would take from the clone's
+# remotes (a clone made by hand may have the Foundation's repository as a
+# remote) or from a GH_REPO the caller had set. GH_REPO names the host, so
+# neither GH_HOST nor gh's own configuration moves the calls to another host.
+HOST=github.com
+export GH_REPO="${HOST}/${GITHUB_REPOSITORY}"
 
 WORKROOT="$(mktemp -d)"
 trap 'rm -rf "$WORKROOT"' EXIT
@@ -61,7 +64,7 @@ matches() { echo "$1  $2" | sha256sum --check --status; }
 # check_public TAG SHA256 WORK: the public address of TAG's copy serves bytes
 # that match SHA256, or the run stops with a sentence that says which is wrong.
 check_public() {
-  local url="https://github.com/${GITHUB_REPOSITORY}/releases/download/$1/${ARCHIVE}"
+  local url="https://${HOST}/${GITHUB_REPOSITORY}/releases/download/$1/${ARCHIVE}"
   local fetched="$3/public-${ARCHIVE}"
   local attempt=1
   until curl --fail --location --silent --show-error --output "$fetched" "$url"; do
