@@ -86,7 +86,7 @@ class BuildTest(unittest.TestCase):
             link.symlink_to(self.payload / "vendor", target_is_directory=True)
         except OSError:
             self.skipTest("this system makes no symbolic links")
-        with self.assertRaisesRegex(tool.NotAPackage, "app/linked is not a plain file"):
+        with self.assertRaisesRegex(tool.NotAPackage, "'app/linked' is not a plain file"):
             tool.build(self.payload, self.script, self.readme, self.output)
         self.assertFalse(self.output.exists())
 
@@ -177,6 +177,40 @@ class BuildTest(unittest.TestCase):
         self.assertEqual((code, out), (1, ""))
         self.assertEqual(err, "error: the file name 'app/bad\\udcff\\udcfe.txt' is not allowed\n")
         self.assertEqual(self.output.read_bytes(), b"older")
+
+    def test_shows_every_name_from_the_payload_through_ascii(self):
+        odd = "x\n::error::made up by a file name\x1b[2J"
+        shown = ascii(f"app/{odd}")
+        try:
+            (self.payload / "app" / odd).symlink_to(self.readme)
+        except OSError:
+            self.skipTest("this system makes no symbolic links or cannot hold such a name")
+        code, out, err = self.run_main()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, f"error: {shown} is not a plain file\n")
+        (self.payload / "app" / odd).unlink()
+
+        if hasattr(os, "mkfifo"):
+            os.mkfifo(self.payload / "app" / odd)
+            code, out, err = self.run_main()
+            self.assertEqual((code, out), (1, ""))
+            self.assertEqual(err, f"error: {shown} is not a plain file\n")
+            (self.payload / "app" / odd).unlink()
+
+        unread = self.payload / "app" / "é‮.js"
+        unread.write_text("x")
+        real_read_bytes = Path.read_bytes
+
+        def read_bytes(path):
+            if path == unread:
+                raise PermissionError(13, "Permission denied", str(path))
+            return real_read_bytes(path)
+
+        with mock.patch.object(Path, "read_bytes", read_bytes):
+            code, out, err = self.run_main()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, "error: 'app/\\xe9\\u202e.js' cannot be read: Permission denied\n")
+        self.assertFalse(self.output.exists())
 
     def test_a_failed_write_leaves_the_output_path_as_it_was(self):
         real_writestr = zipfile.ZipFile.writestr

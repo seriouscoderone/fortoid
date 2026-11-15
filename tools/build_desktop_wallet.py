@@ -66,9 +66,9 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
                 raise NotAPackage(f"{name} is not a file")
             files = [top]
         for path in files:
-            if path.is_symlink() or not path.is_file():
-                raise NotAPackage(f"{path.relative_to(payload).as_posix()} is not a plain file")
             inside = path.relative_to(payload).as_posix()
+            if path.is_symlink() or not path.is_file():
+                raise NotAPackage(f"{ascii(inside)} is not a plain file")
             # An unzip program on Windows reads \\ as a separator (and : as a drive), so such a name could land elsewhere.
             # A name that is not UTF-8 reaches Python with surrogates, which a zip cannot hold.
             if any(char in "\\:" or ord(char) < 0x20 or ord(char) == 0x7F or 0xD800 <= ord(char) <= 0xDFFF
@@ -83,7 +83,12 @@ def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:
     for label, path in (("start script", start_script), ("readme", readme)):
         if path.is_symlink() or not path.is_file():
             raise NotAPackage(f"the {label} is not a plain file")
-    entries = [(name, path.read_bytes()) for name, path in package_files(payload)]
+    entries = []
+    for name, path in package_files(payload):
+        try:
+            entries.append((name, path.read_bytes()))
+        except OSError as error:
+            raise NotAPackage(f"{ascii(name)} cannot be read: {error.strerror or error}") from error
     entries.append(("start-wallet.py", start_script.read_bytes()))
     entries.append(("README.txt", readme.read_bytes()))
     # The zip is written beside the output and put in its place only when complete.
