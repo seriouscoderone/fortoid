@@ -242,13 +242,29 @@ class BuildTest(unittest.TestCase):
                 code, out, err = self.run_main(**given)
                 self.assertEqual((code, out, err), (1, "", f"error: the {label} is not a plain file\n"))
                 self.assertEqual(sorted(os.listdir(root)), before)
-        for output in (loop, one, loop / "out.zip", one / "out.zip"):
-            with self.subTest(output=output.relative_to(root).as_posix()):
+        # Each output case has links of its own, so a case that wrongly builds is the only one reported.
+        def looping(name):
+            link = root / f"{name}-loop"
+            link.symlink_to(link)
+            return [link], link
+
+        def pair(name):
+            first, second = root / f"{name}-one", root / f"{name}-two"
+            first.symlink_to(second)
+            second.symlink_to(first)
+            return [first, second], first
+
+        for case, make, inside in (("loop", looping, False), ("one", pair, False),
+                                   ("loop/out.zip", looping, True), ("one/out.zip", pair, True)):
+            with self.subTest(output=case):
+                links, link = make("out-" + case.replace("/", "-").replace(".", "-"))
+                output = link / "out.zip" if inside else link
+                before = sorted(os.listdir(root))
                 code, out, err = self.run_main(output=output)
                 self.assertEqual((code, out), (1, ""))
                 self.assertRegex(err, r"\Aerror: [^\n]+\n\Z")
                 self.assertEqual(sorted(os.listdir(root)), before)
-                self.assertTrue(loop.is_symlink() and one.is_symlink())
+                self.assertTrue(all(path.is_symlink() for path in links))
 
     def test_refuses_a_link(self):
         link = self.payload / "app" / "leak.txt"
