@@ -265,8 +265,9 @@ expect_contains "plan pins the archive digest" \
   "3618b16ee66aca5704d76310b792383f0a32260c2e774fd5e42f8b62e5f7dd9a" "${BUILDER_PLAN}"
 expect_contains "plan pins the manifest digest" \
   "f76cf23f5cdaa5fe3f7a0e264c862290f9c8b6be2aafca6622926e1869731431" "${BUILDER_PLAN}"
-# The pinned address must be a copy this repository keeps, with the same digest in the list of copies.
-MIRROR_LINE="$(node "${REPO_ROOT}/tools/list-runtime-source-mirrors.mjs" | grep -F "runtime-source-sedi-core-csp-20261107" || true)"
+# The pinned address must be a copy this repository keeps, with the same digest in the list of copies
+# (the list line whose first field, the tag, is exactly the pinned tag).
+MIRROR_LINE="$(node "${REPO_ROOT}/tools/list-runtime-source-mirrors.mjs" | awk -F '\t' '$1 == "runtime-source-sedi-core-csp-20261107"' || true)"
 expect_contains "the pinned source is in the list of copies, with the same digest" \
   "3618b16ee66aca5704d76310b792383f0a32260c2e774fd5e42f8b62e5f7dd9a" "${MIRROR_LINE}"
 expect_contains "plan builds the runtime" "npm run build:runtime" "${BUILDER_PLAN}"
