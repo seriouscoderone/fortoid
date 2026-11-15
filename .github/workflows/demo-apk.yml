@@ -3,6 +3,8 @@ name: Demo APK
 # Builds an installable debug APK (FortWeb wallet + Fort Demo launcher) on every
 # push to dev and publishes it to the rolling "demo-latest" pre-release, so it
 # can be downloaded straight onto a phone from the repository's Releases page.
+# The same release carries the wallet for a desktop browser, built from the same
+# wallet payload.
 
 permissions:
   contents: write
@@ -53,16 +55,42 @@ jobs:
           fi
           cp app/build/outputs/apk/debug/app-debug.apk fortoid-demo.apk
 
+      # The wallet for a computer is the payload the APK carries, with the pinned
+      # wallet's own start script. No payload, no wallet for the computer.
+      - name: Build the wallet for a computer
+        id: desktop
+        if: steps.payload.outcome == 'success'
+        run: |
+          set -euo pipefail
+          OUT="$(python3 tools/build_desktop_wallet.py \
+            --payload app/src/main/assets/payload \
+            --start-script .deps/fortweb/scripts/start_wallet.py \
+            --readme desktop/README.txt \
+            --output fort-wallet-desktop.zip)"
+          echo "$OUT"
+          echo "sha256=${OUT#DESKTOP_WALLET_SHA256=}" >> "$GITHUB_OUTPUT"
+
       - name: Publish demo-latest pre-release
         env:
           GH_TOKEN: ${{ github.token }}
           PAYLOAD: ${{ steps.payload.outcome }}
+          DESKTOP_SHA256: ${{ steps.desktop.outputs.sha256 }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
+          ASSETS=(fortoid-demo.apk)
           if [ "$PAYLOAD" = "success" ]; then
-            WALLET="Includes the FortWeb wallet (KERI Wallet icon)."
+            WALLET="Includes the FortWeb wallet (KERI Wallet icon). A wallet made with a build from before the credential engine is not shown by this one: the engine keeps its storage in a new place."
           else
             WALLET="FortWeb wallet build failed for this commit; only the Fort Demo icon works."
+          fi
+          DESKTOP="There is no wallet for the computer in this build."
+          if [ -n "$DESKTOP_SHA256" ] && [ -f fort-wallet-desktop.zip ]; then
+            ASSETS+=(fort-wallet-desktop.zip)
+            DESKTOP="On a computer: download fort-wallet-desktop.zip, unzip it, and in the
+          unzipped folder run \`python3 start-wallet.py\`. The wallet opens in the
+          browser at http://127.0.0.1:8791/. It needs Python 3.9 or later. Use Chrome or Edge,
+          and one tab. The phone app and this download are the same wallet build.
+          SHA-256 of fort-wallet-desktop.zip: ${DESKTOP_SHA256}"
           fi
           NOTES="Debug build of ${SHORT_SHA}. ${WALLET}
 
@@ -70,10 +98,12 @@ jobs:
           and allow installs from your browser when asked. Newer builds install
           over older ones.
 
-          Then open the **Fort Demo** icon to try the native phone features."
+          Then open the **Fort Demo** icon to try the native phone features.
+
+          ${DESKTOP}"
 
           gh release delete demo-latest --yes --cleanup-tag || true
-          gh release create demo-latest fortoid-demo.apk \
+          gh release create demo-latest "${ASSETS[@]}" \
             --prerelease \
             --target "$GITHUB_SHA" \
             --title "Fortoid demo (${SHORT_SHA})" \
