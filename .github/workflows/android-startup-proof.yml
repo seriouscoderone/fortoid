@@ -113,8 +113,8 @@ jobs:
       - name: Report the start-up time
         if: always() && steps.runproof.outcome != 'skipped'
         run: |
-          LINES="$(adb logcat -d -s MainActivityStartupProof:* 2>/dev/null | grep -E "STAGE=READY|LIVE_EVENT" | tail -4 || true)"
-          echo "${LINES:-(the proof logged no READY line)}"
+          READY_LINES="$(adb logcat -d -s MainActivityStartupProof:* 2>/dev/null | grep -E "STAGE=READY|LIVE_EVENT" | tail -4 || true)"
+          echo "${READY_LINES:-(the proof logged no READY line)}"
 
       - name: Capture startup diagnostics on failure
         if: failure()
