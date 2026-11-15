@@ -303,3 +303,13 @@ test('a list that gives no source stops the run and says so', () => inWorld((w) 
   assert.deepEqual(w.calls(), [], 'neither gh nor curl was called');
   assert.match(output, /^::error::the mirror list gave no source/m);
 }, { listTool: '// prints nothing and exits 0\n' }));
+
+test('a release without the file and wrong bytes from upstream: nothing is uploaded', () => inWorld((w) => {
+  w.release();
+  writeFileSync(path.join(w.state, 'upstream-bytes'), 'tampered\n');
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assertNothingWritten(w);
+  assert.equal(w.asset(), undefined);
+  assert.match(output, /does not match its digest/);
+}));
