@@ -45,6 +45,9 @@ jobs:
       - name: Run runtime-requirements compatibility tests
         run: npm run test:runtime-requirements-compatibility
 
+      - name: Run runtime source mirror list tests
+        run: node --test tools/list-runtime-source-mirrors.test.mjs
+
   package-apk-integrity:
     name: Android package and APK integrity
     runs-on: ubuntu-latest
