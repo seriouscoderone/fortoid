@@ -32,7 +32,7 @@ function upstreamAddress(value, index) {
     throw new Error(`source ${index}: upstream is not an address`);
   }
   if (url.protocol !== 'https:' || url.hostname !== 'github.com' || url.port || url.username || url.password
-      || url.search || url.hash || url.href !== value || !url.pathname.endsWith(`/${ARCHIVE}`)) {
+      || /[?#]/.test(value) || url.href !== value || !url.pathname.endsWith(`/${ARCHIVE}`)) {
     throw new Error(`source ${index}: upstream must be a plain https://github.com/ address of ${ARCHIVE}`);
   }
   return value;

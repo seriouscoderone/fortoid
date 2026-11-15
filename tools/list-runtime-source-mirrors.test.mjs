@@ -42,6 +42,9 @@ test('refuses a source that is not exact', () => {
     [source({ upstream: 'https://user:secret@github.com/o/r/releases/download/t/runtime-source.tar.gz' }), /upstream must be/],
     [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz?x=1' }), /upstream must be/],
     [source({ upstream: 'https://github.com/o/r/releases/download/t/other.tar.gz' }), /upstream must be/],
+    [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz?' }), /upstream must be/],
+    [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz#' }), /upstream must be/],
+    [source({ upstream: 'https://github.com/o/r/releases/download/t/runtime-source.tar.gz?#' }), /upstream must be/],
     [source({ upstream: 'not an address' }), /not an address/],
     [source({ upstream: 7 }), /not an address/],
   ];
