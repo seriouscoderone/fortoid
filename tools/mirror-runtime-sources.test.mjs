@@ -239,3 +239,31 @@ test('gh failing to download a copy it lists: its message is shown and nothing i
   assert.ok(output.includes(message), output);
   assertNothingWritten(w);
 }));
+
+test('a release gh finds whose public address does not answer (a draft) fails and says so', () => inWorld((w) => {
+  w.release({ 'runtime-source.tar.gz': BYTES });
+  writeFileSync(path.join(w.state, 'public-misses'), '1000');
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assertNothingWritten(w);
+  assert.ok(w.calls().some((call) => call[0] === 'curl' && call.at(-1) === PUBLIC), 'the public address was read');
+  assert.match(output, new RegExp(`${PUBLIC.replaceAll('.', '\\.')} does not answer`));
+}));
+
+test('a copy just made whose public address answers after a moment passes', () => inWorld((w) => {
+  writeFileSync(path.join(w.state, 'public-misses'), '2');
+  const { status, output } = w.run();
+  assert.equal(status, 0, output);
+  assert.equal(w.ghCalls('create').length, 1);
+  assert.equal(w.calls().filter((call) => call[0] === 'curl' && call.at(-1) === PUBLIC).length, 3);
+  assert.match(output, new RegExp(`^copy made: ${TAG}$`, 'm'));
+}));
+
+test('a public address whose bytes do not match the digest fails and says so', () => inWorld((w) => {
+  w.release({ 'runtime-source.tar.gz': BYTES });
+  writeFileSync(path.join(w.state, 'public-bytes'), 'served by someone else\n');
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assertNothingWritten(w);
+  assert.match(output, new RegExp(`the bytes at ${PUBLIC.replaceAll('.', '\\.')} do not match its digest`));
+}));

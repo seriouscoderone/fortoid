@@ -18,12 +18,22 @@
 #   GH_TOKEN           read by gh itself; this script never prints it
 #   MIRROR_LIST        optional: a list file to read instead of the committed
 #                      one; passed as FILE to tools/list-runtime-source-mirrors.mjs
+#   MIRROR_RETRY_PAUSE optional: seconds between reads of a copy's public
+#                      address (default 10; the tests set 0)
+#
+# After a copy is found or made, the script reads the public address the builds
+# read, https://github.com/<repository>/releases/download/<tag>/runtime-source.tar.gz,
+# and checks those bytes against the digest: gh finds a release that is still a
+# draft, which that address does not serve. The address is read up to
+# PUBLIC_ATTEMPTS times, since a copy just made may take a moment to answer.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ARCHIVE=runtime-source.tar.gz
+PUBLIC_ATTEMPTS=6
+RETRY_PAUSE="${MIRROR_RETRY_PAUSE:-10}"
 
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be set}"
 : "${GITHUB_SHA:?GITHUB_SHA must be set}"
@@ -34,6 +44,27 @@ trap 'rm -rf "$WORKROOT"' EXIT
 node "${REPO_ROOT}/tools/list-runtime-source-mirrors.mjs" ${MIRROR_LIST:+"$MIRROR_LIST"} > "${WORKROOT}/mirrors.tsv"
 
 matches() { echo "$1  $2" | sha256sum --check --status; }
+
+# check_public TAG SHA256 WORK: the public address of TAG's copy serves bytes
+# that match SHA256, or the run stops with a sentence that says which is wrong.
+check_public() {
+  local url="https://github.com/${GITHUB_REPOSITORY}/releases/download/$1/${ARCHIVE}"
+  local fetched="$3/public-${ARCHIVE}"
+  local attempt=1
+  until curl --fail --location --silent --show-error --output "$fetched" "$url"; do
+    if [ "$attempt" -ge "$PUBLIC_ATTEMPTS" ]; then
+      echo "::error::${url} does not answer after ${PUBLIC_ATTEMPTS} tries: the release may still be a draft"
+      exit 1
+    fi
+    attempt=$((attempt + 1))
+    sleep "$RETRY_PAUSE"
+  done
+  if ! matches "$2" "$fetched"; then
+    echo "::error::the bytes at ${url} do not match its digest"
+    exit 1
+  fi
+  echo "public copy checked: ${url}"
+}
 
 while IFS=$'\t' read -r TAG UPSTREAM SHA256 <&3; do
   WORK="$(mktemp -d "${WORKROOT}/source.XXXXXX")"
@@ -53,6 +84,7 @@ while IFS=$'\t' read -r TAG UPSTREAM SHA256 <&3; do
         echo "::error::the copy under release ${TAG} does not match its digest"
         exit 1
       fi
+      check_public "$TAG" "$SHA256" "$WORK"
       echo "copy present and correct: ${TAG}"
       continue
     fi
@@ -77,5 +109,6 @@ while IFS=$'\t' read -r TAG UPSTREAM SHA256 <&3; do
   else
     gh release upload "$TAG" "$COPY"
   fi
+  check_public "$TAG" "$SHA256" "$WORK"
   echo "copy made: ${TAG}"
 done 3< "${WORKROOT}/mirrors.tsv"
