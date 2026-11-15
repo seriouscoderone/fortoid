@@ -13,7 +13,8 @@
 #
 # Takes gh, curl and node from PATH.
 # Environment:
-#   GITHUB_REPOSITORY  owner/name of this repository (required)
+#   GITHUB_REPOSITORY  owner/name of this repository (required); every gh call
+#                      acts on it (the script sets GH_REPO to it)
 #   GITHUB_SHA         the commit a new release points at (required)
 #   GH_TOKEN           read by gh itself; this script never prints it
 #   MIRROR_LIST        optional: a list file to read instead of the committed
@@ -37,6 +38,12 @@ RETRY_PAUSE="${MIRROR_RETRY_PAUSE:-10}"
 
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be set}"
 : "${GITHUB_SHA:?GITHUB_SHA must be set}"
+
+# Every gh call acts on GITHUB_REPOSITORY, the repository whose public address
+# check_public reads, never on one gh would take from the clone's remotes (a
+# clone made by hand may have the Foundation's repository as a remote) or from a
+# GH_REPO the caller had set.
+export GH_REPO="$GITHUB_REPOSITORY"
 
 WORKROOT="$(mktemp -d)"
 trap 'rm -rf "$WORKROOT"' EXIT
