@@ -5,7 +5,9 @@ name: Runtime source mirror
 # download attached to one of its releases, and such a download can be removed.
 # The list is config/runtime-source-mirror.json. A copy is made once, from the
 # Foundation's address, and only when its bytes match the digest in the list.
-# A copy that exists is checked against the digest and never replaced. Every
+# A copy that exists is checked against the digest and never replaced. The
+# copying and checking are done by scripts/mirror-runtime-sources.sh (tested by
+# tools/mirror-runtime-sources.test.mjs); this workflow only runs it. Every
 # build checks the archive against the same digest again when it reads it
 # (scripts/build-canonical-fortweb-package.sh).
 
@@ -44,39 +46,4 @@ jobs:
       - name: Copy and check
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          node tools/list-runtime-source-mirrors.mjs > "${RUNNER_TEMP}/mirrors.tsv"
-          matches() { echo "$1  $2" | sha256sum --check --status; }
-          while IFS=$'\t' read -r TAG UPSTREAM SHA256 <&3; do
-            WORK="$(mktemp -d)"
-            COPY="${WORK}/runtime-source.tar.gz"
-            if gh release view "$TAG" > /dev/null 2>&1; then
-              if gh release download "$TAG" --pattern runtime-source.tar.gz --dir "$WORK" 2> /dev/null; then
-                if ! matches "$SHA256" "$COPY"; then
-                  echo "::error::the copy under release ${TAG} does not match its digest"
-                  exit 1
-                fi
-                echo "copy present and correct: ${TAG}"
-                continue
-              fi
-              MAKE=upload
-            else
-              MAKE=create
-            fi
-            curl --fail --location --silent --show-error --output "$COPY" "$UPSTREAM"
-            if ! matches "$SHA256" "$COPY"; then
-              echo "::error::${UPSTREAM} does not match its digest"
-              exit 1
-            fi
-            if [ "$MAKE" = create ]; then
-              gh release create "$TAG" "$COPY" \
-                --prerelease \
-                --target "$GITHUB_SHA" \
-                --title "Runtime source copy: ${TAG}" \
-                --notes "A copy of the runtime source the wallet is built from, taken from ${UPSTREAM} and checked against SHA-256 ${SHA256}. The builds of this repository read this copy."
-            else
-              gh release upload "$TAG" "$COPY"
-            fi
-            echo "copy made: ${TAG}"
-          done 3< "${RUNNER_TEMP}/mirrors.tsv"
+        run: bash scripts/mirror-runtime-sources.sh
