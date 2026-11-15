@@ -108,19 +108,26 @@ while IFS=$'\t' read -r TAG UPSTREAM SHA256 <&3; do
     echo "::error::gh could not read release ${TAG}"
     exit 1
   fi
-  curl --fail --location --silent --show-error --output "$COPY" "$UPSTREAM"
+  if ! curl --fail --location --silent --show-error --output "$COPY" "$UPSTREAM"; then
+    echo "::error::the archive for release ${TAG} could not be fetched from ${UPSTREAM}"
+    exit 1
+  fi
   if ! matches "$SHA256" "$COPY"; then
     echo "::error::${UPSTREAM} does not match its digest"
     exit 1
   fi
   if [ "$MAKE" = create ]; then
-    gh release create "$TAG" "$COPY" \
+    if ! gh release create "$TAG" "$COPY" \
       --prerelease \
       --target "$GITHUB_SHA" \
       --title "Runtime source copy: ${TAG}" \
-      --notes "A copy of the runtime source the wallet is built from, taken from ${UPSTREAM} and checked against SHA-256 ${SHA256}. The builds of this repository read this copy."
-  else
-    gh release upload "$TAG" "$COPY"
+      --notes "A copy of the runtime source the wallet is built from, taken from ${UPSTREAM} and checked against SHA-256 ${SHA256}. The builds of this repository read this copy."; then
+      echo "::error::gh could not create release ${TAG}"
+      exit 1
+    fi
+  elif ! gh release upload "$TAG" "$COPY"; then
+    echo "::error::gh could not upload the copy to release ${TAG}"
+    exit 1
   fi
   check_public "$TAG" "$SHA256" "$WORK"
   echo "copy made: ${TAG}"

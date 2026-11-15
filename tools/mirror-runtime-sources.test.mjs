@@ -313,3 +313,32 @@ test('a release without the file and wrong bytes from upstream: nothing is uploa
   assert.equal(w.asset(), undefined);
   assert.match(output, /does not match its digest/);
 }));
+
+test('an upstream address that does not answer stops the run with a sentence naming the tag', () => inWorld((w) => {
+  writeFileSync(path.join(w.state, 'upstream-url'), 'https://github.com/example-foundation/fortweb/elsewhere');
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assertNothingWritten(w);
+  assert.ok(output.includes('curl: (22)'), `curl's own message stays: ${output}`);
+  assert.match(output, new RegExp(`^::error::the archive for release ${TAG} could not be fetched from `
+    + `${UPSTREAM.replaceAll('.', '\\.')}$`, 'm'));
+}));
+
+test('gh failing to create the release stops the run with a sentence naming the tag', () => inWorld((w) => {
+  const message = 'HTTP 422: Validation Failed';
+  writeFileSync(path.join(w.state, 'fail-create'), message);
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assert.ok(output.includes(message), `gh's own message stays: ${output}`);
+  assert.match(output, new RegExp(`^::error::gh could not create release ${TAG}$`, 'm'));
+}));
+
+test('gh failing to upload the copy stops the run with a sentence naming the tag', () => inWorld((w) => {
+  w.release();
+  const message = 'HTTP 500: Internal Server Error';
+  writeFileSync(path.join(w.state, 'fail-upload'), message);
+  const { status, output } = w.run();
+  assert.notEqual(status, 0, output);
+  assert.ok(output.includes(message), `gh's own message stays: ${output}`);
+  assert.match(output, new RegExp(`^::error::gh could not upload the copy to release ${TAG}$`, 'm'));
+}));
