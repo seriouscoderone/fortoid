@@ -493,17 +493,29 @@ engine and change as little of it as possible.
 - **Which browser.** The automated tests use Chromium, so Chrome or Edge is the
   recommended browser. Others are not tested. Safari removes a site's storage
   after a week without use, which would remove the vault.
-- **Keeping the vault.** When a vault is made, the wallet asks the browser to
-  keep its storage (`navigator.storage.persist()`), and Settings says whether
-  the browser agreed. Inside the phone app the wallet asks too and Settings
-  shows nothing: what Android's WebView answers, and what it then does with the
-  storage, is not known yet.
+- **Keeping the vault.** Each time a vault is opened, which includes the moment
+  it is made, the wallet asks the browser to keep its storage
+  (`navigator.storage.persist()`), and Settings says whether the browser
+  agreed. Chrome and Edge decide by themselves, show no prompt, and say no to a
+  site they have just met (tried on 2026-11-15); they may say yes once the
+  wallet has been used, which is why it asks at every opening. Inside the phone
+  app the wallet asks too and Settings shows nothing: what Android's WebView
+  answers, and what it then does with the storage, is not known yet.
 - **One tab.** The draft lets one copy of the engine write at a time. A second
   tab is told that the wallet is already open in another.
 - **What the README says.** One tab. A browser profile with no extensions,
   because an extension that may read pages can read a wallet. The same release
   for the phone and the computer. This is a demonstration build.
 - **Checking the download.** The release notes give the SHA-256 of the zip.
+- **What a local address is safe for.** A local address belongs to whichever
+  program on the computer takes its port first. One that took port 8791 could
+  show a page that looks like the wallet, read the stored vault, which stays
+  locked by its passcode, and ask for the passcode. No script can prevent
+  that. So the computer's wallet is as safe as the computer it runs on, and is
+  for the demonstration with test credentials. The script stops when the port
+  is taken and says not to open the address, and the README says the same. A
+  wallet for real use on a computer needs an application around it (a later
+  slice). The owner agreed on 2026-11-15.
 - **Same build.** The computer package and the APK are built from one pinned
   wallet commit, so two wallets that meet are the same version.
 
@@ -706,7 +718,10 @@ proposal once this document is approved.
   sender whenever it is given. The owner's fork has designs for one.
 - Sending only the part of an issuer's history the receiver does not hold.
 - Custom screens as wallet plugins, with a safety model fit for a phone.
-- A public address for the wallet, with "install as app".
+- A public address for the wallet, with "install as app", or a desktop
+  application around it (Electron or the like), for real use on a computer: a
+  local address is only as safe as the computer (see "The wallet for the
+  computer").
 - Frames that tolerate a missed frame.
 - Hand-over that only the receiver can read, for use at a distance.
 - Erasing a received credential the person declined.
