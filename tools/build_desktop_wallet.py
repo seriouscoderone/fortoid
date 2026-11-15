@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import stat
 import sys
 import zipfile
@@ -29,6 +30,23 @@ class NotAPackage(Exception):
     pass
 
 
+def files_in(folder: Path, payload: Path) -> list[Path]:
+    """Every path under `folder` that is not a folder; a link is listed, not followed. Any listing error stops it."""
+    try:
+        with os.scandir(folder) as listing:
+            paths = [Path(entry.path) for entry in listing]
+    except OSError as error:
+        shown = ascii(folder.relative_to(payload).as_posix())
+        raise NotAPackage(f"the folder {shown} cannot be listed: {error.strerror or error}") from error
+    found: list[Path] = []
+    for path in paths:
+        if path.is_symlink() or not path.is_dir():
+            found.append(path)
+        else:
+            found.extend(files_in(path, payload))
+    return found
+
+
 def package_files(payload: Path) -> list[tuple[str, Path]]:
     """Every file of the wallet in `payload`, as (path inside the folder, file), sorted."""
     found: list[tuple[str, Path]] = []
@@ -39,7 +57,7 @@ def package_files(payload: Path) -> list[tuple[str, Path]]:
         if name in FOLDERS:
             if not top.is_dir():
                 raise NotAPackage(f"{name} is not a folder")
-            files = sorted(path for path in top.rglob("*") if path.is_symlink() or not path.is_dir())
+            files = sorted(files_in(top, payload))
             if not files:
                 raise NotAPackage(f"{name} holds no file")
         else:

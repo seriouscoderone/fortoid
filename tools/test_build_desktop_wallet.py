@@ -8,6 +8,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 TOOL = Path(__file__).resolve().parent / "build_desktop_wallet.py"
 spec = importlib.util.spec_from_file_location("build_desktop_wallet", TOOL)
@@ -164,6 +165,38 @@ class BuildTest(unittest.TestCase):
                 self.assertEqual(self.output.read_bytes(), b"older")
                 self.output.unlink()
                 path.unlink()
+
+    def test_refuses_a_folder_that_cannot_be_listed(self):
+        real_scandir = os.scandir
+        locked = self.payload / "app" / "runtime"
+
+        def scandir(path):
+            if Path(path) == locked:
+                raise PermissionError(13, "Permission denied", str(path))
+            return real_scandir(path)
+
+        with mock.patch.object(os, "scandir", scandir):
+            code, out, err = self.run_main()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, "error: the folder 'app/runtime' cannot be listed: Permission denied\n")
+        self.assertFalse(self.output.exists())
+
+    def test_refuses_a_real_folder_that_cannot_be_listed(self):
+        locked = self.payload / "app" / "locked"
+        locked.mkdir()
+        (locked / "needed.js").write_text("needed")
+        locked.chmod(0)
+        self.addCleanup(locked.chmod, 0o755)
+        try:
+            os.listdir(locked)
+        except PermissionError:
+            pass
+        else:
+            self.skipTest("this user can list a folder of mode 000 (root can)")
+        code, out, err = self.run_main()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, "error: the folder 'app/locked' cannot be listed: Permission denied\n")
+        self.assertFalse(self.output.exists())
 
     def run_main(self, payload=None, script=None, readme=None, output=None):
         """Runs the program; returns its exit code, standard output and standard error."""
