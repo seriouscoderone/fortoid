@@ -13,7 +13,7 @@ To start it
 3. The wallet opens in your browser at http://127.0.0.1:8791/
 
 Leave the terminal open while you use the wallet. Press Ctrl+C in it to stop.
-You need Python 3 and nothing else.
+You need Python 3.9 or later and nothing else.
 
 Good to know
 ------------
@@ -36,5 +36,5 @@ Good to know
 - Set the computer's clock to automatic time.
 - Use the phone app and this download from the same release, so both are the
   same version.
-- The start script sends nothing anywhere. It serves this folder, and only to
-  this computer.
+- The start script sends nothing anywhere. It serves the wallet in this folder,
+  and only to this computer.
