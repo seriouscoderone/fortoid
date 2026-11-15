@@ -155,6 +155,27 @@ class BuildTest(unittest.TestCase):
                 self.assertEqual(after, before)
                 self.assertEqual(sorted(os.listdir(self.temp.name)), ["README.txt", "payload", "start_wallet.py"])
 
+    def test_refuses_an_output_in_the_payload_that_is_a_link_to_outside(self):
+        def reads_nothing(path):
+            raise AssertionError(f"read {path} before refusing the output")
+
+        root = Path(self.temp.name)
+        outside = root / "outside.zip"
+        outside.write_bytes(b"older")
+        for output, target in ((self.payload / "out.zip", outside), (self.payload / "contracts" / "out.zip", root / "none.zip")):
+            with self.subTest(output=output.relative_to(self.payload).as_posix(), target=target.name):
+                try:
+                    output.symlink_to(target)
+                except OSError:
+                    self.skipTest("this system makes no symbolic links")
+                with mock.patch.object(Path, "read_bytes", reads_nothing):
+                    code, out, err = self.run_main(output=output)
+                self.assertEqual((code, out), (1, ""))
+                self.assertEqual(err, f"error: the output {ascii(str(output))} is inside the payload\n")
+                self.assertTrue(output.is_symlink())
+                self.assertEqual(outside.read_bytes(), b"older")
+                self.assertFalse((root / "none.zip").exists())
+
     def test_refuses_an_output_that_names_no_file(self):
         def reads_nothing(path):
             raise AssertionError(f"read {path} before refusing the output")

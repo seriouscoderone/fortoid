@@ -102,7 +102,8 @@ def check_output(payload: Path, start_script: Path, readme: Path, output: Path) 
         raise NotAPackage(f"the output {ascii(str(output))} must be a file's name")
     # os.path.realpath, not Path.resolve: on Python 3.11 and 3.12 resolve() raises RuntimeError on a looping link.
     place = Path(os.path.realpath(output))
-    if any(same_file(folder, payload) for folder in (place, *place.parents)):
+    named = Path(os.path.realpath(output.parent)) / output.name  # where it is written: a link there is replaced
+    if any(same_file(folder, payload) for folder in (place, *place.parents, named, *named.parents)):
         raise NotAPackage(f"the output {ascii(str(output))} is inside the payload")
     for label, path in (("start script", start_script), ("readme", readme)):
         if place == Path(os.path.realpath(path)) or same_file(output, path):
