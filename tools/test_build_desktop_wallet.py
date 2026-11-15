@@ -1,5 +1,6 @@
 """tools/build_desktop_wallet.py: the zip a person downloads to run the wallet on a computer."""
 import contextlib
+import hashlib
 import importlib.util
 import io
 import os
@@ -164,11 +165,24 @@ class BuildTest(unittest.TestCase):
                 self.output.unlink()
                 path.unlink()
 
+    def run_main(self, payload=None, script=None, readme=None, output=None):
+        """Runs the program; returns its exit code, standard output and standard error."""
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = tool.main(["--payload", str(payload or self.payload), "--start-script", str(script or self.script),
+                              "--readme", str(readme or self.readme), "--output", str(output or self.output)])
+        return code, out.getvalue(), err.getvalue()
+
     def test_the_program_prints_the_digest_and_fails_plainly(self):
-        self.assertEqual(tool.main(["--payload", str(self.payload), "--start-script", str(self.script),
-                                    "--readme", str(self.readme), "--output", str(self.output)]), 0)
-        self.assertEqual(tool.main(["--payload", str(self.payload / "missing"), "--start-script", str(self.script),
-                                    "--readme", str(self.readme), "--output", str(self.output)]), 1)
+        code, out, err = self.run_main()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, f"DESKTOP_WALLET_SHA256={hashlib.sha256(self.output.read_bytes()).hexdigest()}\n")
+        self.assertEqual(err, "")
+        self.output.unlink()
+        code, out, err = self.run_main(payload=self.payload / "missing")
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertEqual(err, "error: the payload has no app\n")
 
 
 if __name__ == "__main__":
