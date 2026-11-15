@@ -99,6 +99,7 @@ def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:
             for name, data in sorted(entries):
                 info = zipfile.ZipInfo(f"{FOLDER}/{name}", date_time=STAMP)
                 info.compress_type = zipfile.ZIP_DEFLATED
+                info.create_system = 3  # Unix, whatever system builds it (Python writes 0 on Windows)
                 info.external_attr = (stat.S_IFREG | 0o644) << 16
                 archive.writestr(info, data, compresslevel=9)  # a ZipInfo's own level is unset otherwise
         digest = hashlib.sha256(partial.read_bytes()).hexdigest()

@@ -66,6 +66,7 @@ class BuildTest(unittest.TestCase):
                     self.assertEqual(info.date_time, (2026, 1, 1, 0, 0, 0))
                     self.assertEqual(info.external_attr, 0o100644 << 16)
                     self.assertEqual(info.compress_type, zipfile.ZIP_DEFLATED)
+                    self.assertEqual(info.create_system, 3)  # made on Unix, whatever system builds it
 
     def test_deflates_every_entry_at_level_9(self):
         words = "the wallet keeps a vault in the browser under one address and asks it to keep its storage".split()
