@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import secrets
 import stat
 import sys
 import zipfile
@@ -85,13 +86,22 @@ def build(payload: Path, start_script: Path, readme: Path, output: Path) -> str:
     entries = [(name, path.read_bytes()) for name, path in package_files(payload)]
     entries.append(("start-wallet.py", start_script.read_bytes()))
     entries.append(("README.txt", readme.read_bytes()))
-    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-        for name, data in sorted(entries):
-            info = zipfile.ZipInfo(f"{FOLDER}/{name}", date_time=STAMP)
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = (stat.S_IFREG | 0o644) << 16
-            archive.writestr(info, data)
-    return hashlib.sha256(output.read_bytes()).hexdigest()
+    # The zip is written beside the output and put in its place only when complete.
+    partial = output.with_name(f".{output.name}.{secrets.token_hex(8)}.partial")
+    try:
+        with open(partial, "xb") as file, \
+                zipfile.ZipFile(file, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            for name, data in sorted(entries):
+                info = zipfile.ZipInfo(f"{FOLDER}/{name}", date_time=STAMP)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = (stat.S_IFREG | 0o644) << 16
+                archive.writestr(info, data)
+        digest = hashlib.sha256(partial.read_bytes()).hexdigest()
+        os.replace(partial, output)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
+    return digest
 
 
 def main(argv: list[str] | None = None) -> int:

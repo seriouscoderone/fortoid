@@ -178,6 +178,28 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(err, "error: the file name 'app/bad\\udcff\\udcfe.txt' is not allowed\n")
         self.assertEqual(self.output.read_bytes(), b"older")
 
+    def test_a_failed_write_leaves_the_output_path_as_it_was(self):
+        real_writestr = zipfile.ZipFile.writestr
+
+        def writestr(archive, info, data, *args, **kwargs):
+            if len(archive.infolist()) == 2:
+                raise OSError(5, "Input/output error")
+            return real_writestr(archive, info, data, *args, **kwargs)
+
+        for older in (None, b"older"):
+            with self.subTest(older=older):
+                if older is not None:
+                    self.output.write_bytes(older)
+                before = sorted(os.listdir(self.temp.name))
+                with mock.patch.object(zipfile.ZipFile, "writestr", writestr):
+                    code, out, err = self.run_main()
+                self.assertEqual((code, out, err), (1, "", "error: [Errno 5] Input/output error\n"))
+                self.assertEqual(sorted(os.listdir(self.temp.name)), before)
+                if older is None:
+                    self.assertFalse(self.output.exists())
+                else:
+                    self.assertEqual(self.output.read_bytes(), older)
+
     def test_refuses_a_folder_that_cannot_be_listed(self):
         real_scandir = os.scandir
         locked = self.payload / "app" / "runtime"
