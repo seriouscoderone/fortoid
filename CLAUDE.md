@@ -177,7 +177,7 @@ the built wallet as `fort-wallet-desktop.zip`. Its browser test
 (`playwright/fortweb-desktop-start.spec.ts`) runs against an unzipped download
 when `FORT_WALLET_FOLDER` names the folder. Its unit tests
 (`python/test_start_wallet.py`) also run on Windows, macOS
-and Linux with Python 3.11 and 3.13, and with 3.9 on Windows and macOS
+and Linux with Python 3.11, 3.13 and 3.14, and with 3.9 on Windows and macOS
 (fortweb `.github/workflows/start-script-platforms.yml`), on a push to
 `credentials` that changes the script or its tests: Windows path rules differ
 (a path part such as `C:..`), and only a real Windows run shows it.
