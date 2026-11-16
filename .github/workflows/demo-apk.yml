@@ -105,7 +105,8 @@ jobs:
                 fi
                 ASSETS+=(fort-wallet-desktop.zip)
                 DESKTOP="On a computer: download fort-wallet-desktop.zip, unzip it, and in the
-          unzipped folder run \`python3 start-wallet.py\`. The wallet opens in the
+          folder \`fort-wallet\` that comes out run \`python3 start-wallet.py\`
+          (on Windows: \`py start-wallet.py\`). The wallet opens in the
           browser at \`http://127.0.0.1:8791/\`. It needs Python 3.9 or later. Use Chrome or Edge,
           and one tab. The phone app and this download are the same wallet build.
           SHA-256 of fort-wallet-desktop.zip: ${DESKTOP_SHA256}"
