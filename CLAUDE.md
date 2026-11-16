@@ -234,3 +234,13 @@ loading bar moves once a second on a timer, see fortweb
 is still in progress, so wait for it before the next push when you need its
 result.
 
+Going back to the wallet from before the credential engine (fortweb `dev`,
+`1555227`): `git revert --no-edit 873da63 08cb0cf 9d1a758`, in that order (the
+first lets the second apply without a conflict), push both branches and wait
+for every workflow. That wallet has no start script, so the release then
+carries the APK alone and says there is no wallet for the computer. Its
+runtime source is read from the Foundation's address again: this repository
+keeps no copy of it. The earlier vault shows again, and a wallet made with the
+credential engine does not, until the pin returns: each engine keeps its
+storage in its own place.
+
