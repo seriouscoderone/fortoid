@@ -205,8 +205,9 @@ When the draft moves: read its head in fortweb with
 it with `2db99e8`. If the Foundation added commits to it, merge
 `upstream/pr42` into `credentials` again. If it rewrote its branch, start a
 new branch from `dev`, merge the new head the way Task 1 of this
-repository's `.internal/plans/2026-11-14-credentials-base.md` did, and
-cherry-pick this branch's own commits onto it.
+repository's `.internal/plans/2026-11-14-credentials-base.md` did,
+cherry-pick this branch's own commits onto it, and give it the name
+`credentials`: the wallet's workflows run on that name only.
 
 Ship a FortWeb change to the APK: push fortweb `credentials`, set its full SHA in
 Fortoid `config/fortweb-runtime.json`, verify locally with
