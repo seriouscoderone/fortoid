@@ -32,7 +32,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK_FILE="${REPO_ROOT}/config/fortweb-runtime.json"
 
-# Reviewed runtime-source pin. These values are the reviewed contract and must not
+# Reviewed runtime-source pin. All three values are the reviewed contract. The two digests must not
 # be changed here; they must agree with the FortWeb producer's declared pin.
 # The address is this repository's own checked copy of the Foundation's archive
 # (config/runtime-source-mirror.json, .github/workflows/runtime-source-mirror.yml).
