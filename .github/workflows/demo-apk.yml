@@ -117,7 +117,7 @@ jobs:
                 exit 1
                 ;;
             esac
-            WALLET="Includes the FortWeb wallet (KERI Wallet icon). A wallet made with a build from before the credential engine is not shown by this one: the engine keeps its storage in a new place."
+            WALLET="Includes the FortWeb wallet (KERI Wallet icon). A wallet made with a build from before the credential engine is not shown by a build that has it, nor the other way round: each keeps its storage in its own place."
           else
             WALLET="FortWeb wallet build failed for this commit; only the Fort Demo icon works."
           fi
