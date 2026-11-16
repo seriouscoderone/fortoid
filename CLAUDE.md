@@ -204,7 +204,11 @@ Fortoid `config/fortweb-runtime.json`, verify locally with
 
 After every pin, check **all** workflows on `dev`, not only Demo APK. The
 Android API 36 Startup Proof boots the real wallet on a 2-core emulator that
-draws in software, with a 30 s boot budget (12-23 s when nothing is drawn).
+draws in software. The wallet allows its first request, which includes
+starting the worker, 30 s (`DEFAULT_REQUEST_TIMEOUT_MS` in fortweb
+`app/runtime/bridge.ts`); on that emulator it took 14 to 25 s in the runs of
+2026-11-15, with either engine, when nothing is drawn. The proof's own
+`elapsedMs` is longer and has a limit of four minutes.
 Anything that keeps drawing during start-up eats that budget: a CSS animation
 on the start page failed the proof seven runs in a row. Keep start-up UI still (the
 loading bar moves once a second on a timer, see fortweb
