@@ -102,8 +102,8 @@ The address is this repository's own checked copy of the Foundation's archive
 A wallet that needs another runtime source: add the source to
 `config/runtime-source-mirror.json` and push that first; wait for the workflow
 Runtime source mirror to make the copy (it runs on a push that changes the
-list, its script or the workflow file, and cannot be started by hand, so to
-make a copy again re-run its last run); only then move the reviewed pin in
+list, the tool that reads it, its script or the workflow file, and cannot be
+started by hand, so to make a copy again re-run its last run); only then move the reviewed pin in
 `scripts/build-canonical-fortweb-package.sh` and the wallet pin. In one push
 the demo would be published without the wallet. The wallet repository's own
 workflow reads the Foundation's address (fortweb
@@ -207,7 +207,8 @@ it with `2db99e8`. If the Foundation added commits to it, merge
 new branch from `dev`, merge the new head the way Task 1 of this
 repository's `.internal/plans/2026-11-14-credentials-base.md` did,
 cherry-pick this branch's own commits onto it, and give it the name
-`credentials`: the wallet's workflows run on that name only.
+`credentials`: neither of the wallet's workflows runs on a branch of another
+name.
 
 Ship a FortWeb change to the APK: push fortweb `credentials` and wait until its
 workflows are green on that commit, set its full SHA in
