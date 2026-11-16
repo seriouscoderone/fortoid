@@ -209,11 +209,16 @@ repository's `.internal/plans/2026-11-14-credentials-base.md` did,
 cherry-pick this branch's own commits onto it, and give it the name
 `credentials`: the wallet's workflows run on that name only.
 
-Ship a FortWeb change to the APK: push fortweb `credentials`, set its full SHA in
+Ship a FortWeb change to the APK: push fortweb `credentials` and wait until its
+workflows are green on that commit, set its full SHA in
 Fortoid `config/fortweb-runtime.json`, verify locally with
 `scripts/build-canonical-fortweb-package.sh --fortweb-dir /home/user/fortweb`
 (needs `build/runtime-source` absent) + `node tools/import-fortweb-runtime-package.mjs`
 + `./gradlew :app:assembleDebug`, then push; CI publishes `demo-latest`.
+The Demo APK workflow also builds `fort-wallet-desktop.zip` with
+`tools/build_desktop_wallet.py`, from the same payload, the pinned wallet's
+`scripts/start_wallet.py` and `desktop/README.txt`. That note repeats the
+script's address, its command and its oldest Python: change them together.
 
 After every pin, check **all** workflows on `dev`, not only Demo APK. The
 Android API 36 Startup Proof boots the real wallet on a 2-core emulator that
