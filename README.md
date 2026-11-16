@@ -26,7 +26,8 @@ The APK has two icons: **KERI Wallet** (FortWeb) and **Fort Demo** (`DemoActivit
 
 The same release carries `fort-wallet-desktop.zip`: the wallet for a desktop
 browser, built from the same wallet commit as the APK. Unzip it and, in the
-unzipped folder, run `python3 start-wallet.py`. The wallet opens at
+folder `fort-wallet` that comes out, run `python3 start-wallet.py` (on
+Windows: `py start-wallet.py`). The wallet opens at
 `http://127.0.0.1:8791/`. It needs Python 3.9 or later and nothing else. Use Chrome or
 Edge, one tab, in a browser profile with no extensions. The script serves the
 wallet in the folder, to that computer only, and the browser keeps the vault
