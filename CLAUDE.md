@@ -101,15 +101,15 @@ The address is this repository's own checked copy of the Foundation's archive
 
 A wallet that needs another runtime source: add the source to
 `config/runtime-source-mirror.json` and push that first; wait for the workflow
-Runtime source mirror to make the copy (it runs on a push that changes the
-list, the tool that reads it, its script or the workflow file, and cannot be
-started by hand, so to make a copy again re-run its last run); only then move the reviewed pin in
-`scripts/build-canonical-fortweb-package.sh` and the wallet pin. In one push
-the demo would be published without the wallet. The wallet repository's own
-workflow reads the Foundation's address (fortweb
+Runtime source mirror to make the copy (it runs on a push that changes the list,
+the tool that reads it, its script or the workflow file, and cannot be started
+by hand, because the file is not on the default branch, so to make a copy again
+re-run its last run); only then move the reviewed pin in
+`scripts/build-canonical-fortweb-package.sh` and the wallet pin. In one push the
+demo would be published without the wallet. The wallet repository's own workflow
+reads the Foundation's address (fortweb
 `.github/actions/produce-runtime-package/action.yml`); if that address ever
-fails, the workflow's three inputs take the copy's address and the two
-digests.
+fails, the workflow's three inputs take the copy's address and the two digests.
 
 Tests: Playwright must use the container's Chromium, so create an uncommitted
 `playwright.local.config.ts` (spread `./playwright.config`, set
